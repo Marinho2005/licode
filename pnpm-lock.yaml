@@ -267,6 +267,19 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
+  packages/runtime-python:
+    dependencies:
+      '@licode/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@licode/runtime-core':
+        specifier: workspace:*
+        version: link:../runtime-core
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
 packages:
 
   '@bjorn3/browser_wasi_shim@0.4.2':
