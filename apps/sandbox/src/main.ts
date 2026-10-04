@@ -1,10 +1,12 @@
 import type {
   HandshakeAckMessage,
   HandshakeInitMessage,
-  HostToSandboxMessage
+  HostToSandboxMessage,
+  SandboxToHostMessage
 } from '@licode/protocol';
 import { PROTOCOL_VERSION } from '@licode/protocol';
 import { SandboxSessionHost } from './session-host.js';
+import { installAssets } from './asset-installer.js';
 
 let activeSession: SandboxSessionHost | null = null;
 let boundPort: MessagePort | null = null;
@@ -21,6 +23,7 @@ function setupPort(port: MessagePort) {
         activeSession.cleanup();
       }
       activeSession = new SandboxSessionHost(port, msg.id, {
+        language: msg.language,
         files: msg.files,
         entry: msg.entry,
         limits: msg.limits
@@ -33,6 +36,36 @@ function setupPort(port: MessagePort) {
       if (activeSession && activeSession.sessionId === msg.id) {
         activeSession.handleStdin(msg.data);
       }
+    } else if (msg.type === 'install') {
+      installAssets(msg.language, (loaded, total) => {
+        const progressMsg: SandboxToHostMessage = {
+          id: msg.id,
+          version: PROTOCOL_VERSION,
+          type: 'install-progress',
+          loaded,
+          total
+        };
+        port.postMessage(progressMsg);
+      })
+        .then(({ totalBytes, cached }) => {
+          const doneMsg: SandboxToHostMessage = {
+            id: msg.id,
+            version: PROTOCOL_VERSION,
+            type: 'install-done',
+            totalBytes,
+            cached
+          };
+          port.postMessage(doneMsg);
+        })
+        .catch((err: unknown) => {
+          const errorMsg: SandboxToHostMessage = {
+            id: msg.id,
+            version: PROTOCOL_VERSION,
+            type: 'install-error',
+            message: err instanceof Error ? err.message : String(err)
+          };
+          port.postMessage(errorMsg);
+        });
     }
   });
 
