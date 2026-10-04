@@ -108,6 +108,26 @@ licode/
 
 ---
 
+## 🌐 Linguagens Suportadas
+
+O sistema suporta nativamente a execução no navegador das seguintes linguagens utilizando WebAssembly (Wasm):
+
+- **JavaScript**: Executado diretamente através da engine nativa com isolamento.
+- **Python (Pyodide)**: Distribuição do CPython para navegador (via WebAssembly).
+- **Ruby (ruby.wasm)**: Porta oficial do interpretador CRuby em WebAssembly.
+
+---
+
+## 🖥️ Terminal Integrado (Xterm.js)
+
+O componente visual de saída utiliza o **xterm.js**, fornecendo uma experiência de terminal rica similar à do VSCode, com cores ANSI e suporte completo a streams e formatação de sistema.
+
+**Limitações Atuais:**
+- Apenas saída interativa (Stdout/Stderr);
+- *Stdin* interativo ainda não é suportado pelo runtime do browser. (Entradas devem ser tratadas em modo "batch" ou enviadas no pacote inicial da sessão).
+
+---
+
 ## 🧠 Arquitetura e Segurança
 
 1. **Separação Obrigatória de Origens:**
