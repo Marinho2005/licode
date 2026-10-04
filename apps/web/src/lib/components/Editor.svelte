@@ -1,12 +1,16 @@
 <script lang="ts">
   let {
     code = $bindable(),
+    entryFile = 'index.js',
+    languageLabel = 'JavaScript',
     isRunDisabled,
     isStopDisabled,
     onRun,
     onStop
   }: {
     code: string;
+    entryFile?: string;
+    languageLabel?: string;
     isRunDisabled: boolean;
     isStopDisabled: boolean;
     onRun: () => void;
@@ -16,7 +20,7 @@
 
 <section class="panel editor-panel">
   <div class="panel-header">
-    <span>index.js</span>
+    <span class="entry-file-label">{entryFile}</span>
     <div class="actions">
       <button
         class="btn btn-run"
@@ -37,7 +41,7 @@
   <textarea
     class="code-textarea"
     bind:value={code}
-    placeholder="Digite ou cole seu código JavaScript aqui..."
+    placeholder="Digite ou cole seu código {languageLabel} aqui..."
     spellcheck="false"
   ></textarea>
 </section>

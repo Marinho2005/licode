@@ -4,11 +4,13 @@
   let {
     runtimeState,
     execPhase,
-    exitStatus
+    exitStatus,
+    runtimeLabel = 'Runtime JS'
   }: {
     runtimeState: RuntimeState | 'error';
     execPhase: 'idle' | 'compiling' | 'running';
     exitStatus: { code: number; reason?: string } | null;
+    runtimeLabel?: string;
   } = $props();
 </script>
 
@@ -19,7 +21,7 @@
   </div>
   <div class="status-bar">
     <span class="status-item">
-      Runtime JS: <strong class="state-{runtimeState}">{runtimeState}</strong>
+      {runtimeLabel}: <strong class="state-{runtimeState}">{runtimeState}</strong>
     </span>
     <span class="status-item">
       Fase: <strong class="phase-{execPhase}">{execPhase}</strong>

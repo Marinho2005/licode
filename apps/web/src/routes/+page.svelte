@@ -4,42 +4,30 @@
   import type { ExecutionSession, RuntimeState } from '@licode/runtime-core';
   import { createIDEEnvironment } from '$lib/runtime-service.js';
   import { DEFAULT_SANDBOX_URL } from '$lib/config.js';
+  import {
+    LANGUAGES,
+    getLanguageProfile,
+    DEFAULT_LANGUAGE_ID,
+    type LanguageProfile
+  } from '$lib/languages.js';
 
   import Header from '$lib/components/Header.svelte';
   import PresetsBar from '$lib/components/PresetsBar.svelte';
   import Editor from '$lib/components/Editor.svelte';
   import Output, { type OutputLine } from '$lib/components/Output.svelte';
 
-  const PRESETS: Record<string, { label: string; code: string }> = {
-    hello: {
-      label: '1. console.log("oi")',
-      code: 'console.log("oi");'
-    },
-    timeout: {
-      label: '2. while(true) (Timeout 3s)',
-      code: `console.log("Iniciando loop infinito síncrono...");\nwhile (true) {\n  // bloqueia thread\n}`
-    },
-    outputLimit: {
-      label: '3. Loop de Logs (Output Limit)',
-      code: `console.log("Iniciando spam de console.log...");\nlet i = 0;\nwhile (true) {\n  console.log("linha de log de teste #" + (++i) + " - flood flood flood");\n}`
-    },
-    error: {
-      label: '4. Throw de Erro',
-      code: `console.log("Antes do throw");\nthrow new Error("Erro de execução simulado!");`
-    },
-    security: {
-      label: '5. Isolamento (Escape Test)',
-      code: `console.log("Tentando acessar window/document/localStorage...");\ntry {\n  console.log("window:", typeof window !== "undefined" ? window : "INACESSÍVEL");\n} catch (e: any) { console.error("window bloqueado:", e.message); }\n\ntry {\n  console.log("document:", typeof document !== "undefined" ? document : "INACESSÍVEL");\n} catch (e: any) { console.error("document bloqueado:", e.message); }\n\ntry {\n  console.log("localStorage:", typeof localStorage !== "undefined" ? localStorage : "INACESSÍVEL");\n} catch (e: any) { console.error("localStorage bloqueado:", e.message); }`
-    },
-    asyncInterval: {
-      label: '6. Stop Interrompe',
-      code: `console.log("Iniciando loop assíncrono. Clique em Stop para matar imediatamente!");\nlet count = 0;\nwhile (true) {\n  console.log("Tick #" + (++count));\n  await new Promise(r => setTimeout(r, 100));\n}`
-    }
-  };
-
   let iframeElement = $state<HTMLIFrameElement | null>(null);
   let sandboxUrl = $state(DEFAULT_SANDBOX_URL);
-  let code = $state(PRESETS.hello.code);
+  let selectedLanguageId = $state<string>(DEFAULT_LANGUAGE_ID);
+
+  const currentProfile = $derived<LanguageProfile>(getLanguageProfile(selectedLanguageId));
+
+  // Mapa em memória para reter as edições de código por linguagem
+  const userCodes: Record<string, string> = {
+    [DEFAULT_LANGUAGE_ID]: getLanguageProfile(DEFAULT_LANGUAGE_ID).examples[0].code
+  };
+
+  let code = $state(userCodes[DEFAULT_LANGUAGE_ID]);
   let runtimeState = $state<RuntimeState | 'error'>('not-installed');
   let execPhase = $state<'idle' | 'compiling' | 'running'>('idle');
   let exitStatus = $state<{ code: number; reason?: string } | null>(null);
@@ -58,12 +46,46 @@
     exitStatus = null;
   }
 
-  let selectedLanguage = $state('javascript');
-  function changeLanguage(lang) {
-    selectedLanguage = lang;
-    code = lang === 'python' ? 'print("hello python")' : PRESETS.hello.code;
+  function changeLanguage(newLangId: string) {
+    if (newLangId === selectedLanguageId && userCodes[newLangId] !== undefined) {
+      return;
+    }
+
+    // Salva o texto editado pelo usuário na linguagem atual
+    userCodes[selectedLanguageId] = code;
+
+    selectedLanguageId = newLangId;
+    const newProfile = getLanguageProfile(newLangId);
+
+    // Se for a primeira vez, carrega o preset 1 (Hello World); senão restaura o texto salvo
+    if (userCodes[newLangId] === undefined) {
+      userCodes[newLangId] = newProfile.examples[0]?.code ?? '';
+    }
+    code = userCodes[newLangId];
+
     clearOutput();
-    if (ideEnv) ideEnv.manager.prepare(lang).catch(e => appendLog('stderr', e.message));
+
+    if (!newProfile.runtimeReady) {
+      runtimeState = 'not-installed';
+      return;
+    }
+
+    if (ideEnv) {
+      runtimeState = ideEnv.manager.getState(newLangId);
+      ideEnv.manager.prepare(newLangId).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        appendLog('stderr', `Falha ao inicializar runtime (${newProfile.label}): ${msg}`);
+      });
+    }
+  }
+
+  function loadPreset(presetId: string) {
+    const example = currentProfile.examples.find((p) => p.id === presetId);
+    if (example) {
+      code = example.code;
+      userCodes[selectedLanguageId] = code;
+      clearOutput();
+    }
   }
 
   onMount(() => {
@@ -74,9 +96,8 @@
     }
 
     const paramLang = params.get('lang');
-    if (paramLang === 'python' || paramLang === 'py') {
-      selectedLanguage = 'python';
-      code = 'print("hello")';
+    if (paramLang) {
+      changeLanguage(paramLang);
     }
 
     if (new URL(sandboxUrl, location.href).origin === location.origin) {
@@ -93,30 +114,37 @@
     ideEnv = createIDEEnvironment(iframeElement, sandboxUrl);
     (window as unknown as { __licode_ide?: unknown }).__licode_ide = ideEnv;
 
-    ideEnv.manager.onStateChange((_id: string, state: RuntimeState) => {
-      runtimeState = state;
+    ideEnv.manager.onStateChange((id: string, state: RuntimeState) => {
+      if (id === selectedLanguageId) {
+        runtimeState = state;
+      }
     });
 
-    // Pré-aquece o runtime selecionado
-    ideEnv.manager.prepare(selectedLanguage).catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      appendLog('stderr', `Falha ao inicializar runtime: ${msg}`);
-    });
+    if (currentProfile.runtimeReady) {
+      ideEnv.manager.prepare(selectedLanguageId).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        appendLog('stderr', `Falha ao inicializar runtime: ${msg}`);
+      });
+    }
   });
 
   async function handleRun() {
     if (!ideEnv || execPhase !== 'idle') return;
 
+    if (!currentProfile.runtimeReady) {
+      appendLog('stderr', `Runtime para ${currentProfile.label} ainda não está disponível.`);
+      return;
+    }
+
     clearOutput();
     exitStatus = null;
     execPhase = 'compiling';
-    appendLog('system', '--- Iniciando sessão de execução ---');
+    appendLog('system', `--- Iniciando sessão de execução (${currentProfile.label}) ---`);
 
     try {
-      const entry = selectedLanguage === 'python' ? 'main.py' : 'index.js';
-      const session = await ideEnv.manager.startSession(selectedLanguage, {
-        files: { [entry]: code },
-        entry,
+      const session = await ideEnv.manager.startSession(currentProfile.id, {
+        files: { [currentProfile.entryFile]: code },
+        entry: currentProfile.entryFile,
         limits: { wallMs: 3000 }
       });
       currentSession = session;
@@ -158,32 +186,42 @@
     appendLog('system', 'Enviando sinal SIGKILL...');
     await currentSession.signal('SIGKILL');
   }
-
-  function loadPreset(key: string) {
-    if (PRESETS[key]) {
-      code = PRESETS[key].code;
-      clearOutput();
-    }
-  }
 </script>
 
 <div class="app-container">
-  <Header {runtimeState} {execPhase} {exitStatus} />
+  <Header
+    {runtimeState}
+    {execPhase}
+    {exitStatus}
+    runtimeLabel={currentProfile.runtimeLabel}
+  />
 
   <div class="lang-selector">
-    <label>Linguagem: 
-      <select value={selectedLanguage} onchange={(e) => changeLanguage(e.target.value)}>
-        <option value="javascript">JavaScript</option>
-        <option value="python">Python</option>
+    <label class="lang-label" for="select-language">
+      Linguagem:
+      <select
+        id="select-language"
+        class="lang-select"
+        value={selectedLanguageId}
+        onchange={(e) => changeLanguage((e.currentTarget as HTMLSelectElement).value)}
+      >
+        {#each LANGUAGES as lang}
+          <option value={lang.id}>
+            {lang.label}
+          </option>
+        {/each}
       </select>
     </label>
   </div>
-  <PresetsBar presets={PRESETS} onSelect={loadPreset} />
+
+  <PresetsBar presets={currentProfile.examples} onSelect={loadPreset} />
 
   <main class="main-layout">
     <Editor
       bind:code
-      isRunDisabled={execPhase !== 'idle' || runtimeState !== 'ready'}
+      entryFile={currentProfile.entryFile}
+      languageLabel={currentProfile.label}
+      isRunDisabled={execPhase !== 'idle' || runtimeState !== 'ready' || !currentProfile.runtimeReady}
       isStopDisabled={execPhase === 'idle'}
       onRun={handleRun}
       onStop={handleStop}
@@ -234,6 +272,37 @@
     border: none;
     visibility: hidden;
   }
-  .lang-selector { padding: 8px 18px; background: #0d1117; border-bottom: 1px solid #21262d; }
-  .lang-selector select { background: #21262d; color: #fff; padding: 4px; border-radius: 4px; border: 1px solid #30363d; margin-left: 8px; }
+
+  .lang-selector {
+    padding: 8px 18px;
+    background: #0d1117;
+    border-bottom: 1px solid #21262d;
+    display: flex;
+    align-items: center;
+  }
+
+  .lang-label {
+    font-size: 0.85rem;
+    color: #8b949e;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .lang-select {
+    background: #21262d;
+    color: #f0f6fc;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid #30363d;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .lang-select:focus {
+    border-color: #58a6ff;
+  }
 </style>
