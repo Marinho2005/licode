@@ -27,11 +27,11 @@ jobs:
       - name: Instalar dependências
         run: pnpm install --frozen-lockfile
 
-      - name: Checagem estrita de tipos (TypeScript)
-        run: pnpm typecheck
-
       - name: Compilar todos os pacotes e apps
         run: pnpm build
+
+      - name: Checagem estrita de tipos (TypeScript)
+        run: pnpm typecheck
 
       - name: Build da imagem Docker apps/sandbox
         run: docker build -t licode-sandbox:test -f apps/sandbox/Dockerfile .

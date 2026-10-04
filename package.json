@@ -8,7 +8,7 @@
     "dev:sandbox": "pnpm --filter @licode/sandbox dev",
     "dev:web": "pnpm --filter @licode/web dev",
     "build": "pnpm -r run build",
-    "typecheck": "pnpm -r run typecheck",
+    "typecheck": "pnpm build && pnpm -r run typecheck",
     "test": "node tests/acceptance.test.mjs"
   },
   "devDependencies": {
