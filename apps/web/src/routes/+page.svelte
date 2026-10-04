@@ -69,7 +69,10 @@
     if (sandboxOrigin === window.location.origin) {
       runtimeState = 'error';
       appendLog('stderr', 'Erro de segurança: Sandbox não pode rodar na mesma origem.');
-      throw new Error('Sandbox não pode rodar na mesma origem');
+      setTimeout(() => {
+        throw new Error('Sandbox não pode rodar na mesma origem');
+      }, 0);
+      return;
     }
 
     if (!iframeElement) return;
