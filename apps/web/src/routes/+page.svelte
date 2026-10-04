@@ -65,8 +65,7 @@
       sandboxUrl = paramUrl;
     }
 
-    const sandboxOrigin = new URL(sandboxUrl, window.location.origin).origin;
-    if (sandboxOrigin === window.location.origin) {
+    if (new URL(sandboxUrl, location.href).origin === location.origin) {
       runtimeState = 'error';
       appendLog('stderr', 'Erro de segurança: Sandbox não pode rodar na mesma origem.');
       setTimeout(() => {
