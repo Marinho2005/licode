@@ -6,7 +6,7 @@
     execPhase,
     exitStatus
   }: {
-    runtimeState: RuntimeState;
+    runtimeState: RuntimeState | 'error';
     execPhase: 'idle' | 'compiling' | 'running';
     exitStatus: { code: number; reason?: string } | null;
   } = $props();
@@ -77,6 +77,7 @@
   .state-ready { color: #3fb950; }
   .state-installing, .state-warming { color: #d29922; }
   .state-not-installed { color: #8b949e; }
+  .state-error { color: #f85149; }
 
   .phase-running { color: #58a6ff; }
   .phase-compiling { color: #d29922; }

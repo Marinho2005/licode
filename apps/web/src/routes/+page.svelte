@@ -40,7 +40,7 @@
   let iframeElement = $state<HTMLIFrameElement | null>(null);
   let sandboxUrl = $state(DEFAULT_SANDBOX_URL);
   let code = $state(PRESETS.hello.code);
-  let runtimeState = $state<RuntimeState>('not-installed');
+  let runtimeState = $state<RuntimeState | 'error'>('not-installed');
   let execPhase = $state<'idle' | 'compiling' | 'running'>('idle');
   let exitStatus = $state<{ code: number; reason?: string } | null>(null);
   let outputLines = $state<OutputLine[]>([]);
@@ -59,6 +59,19 @@
   }
 
   onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paramUrl = params.get('sandboxUrl');
+    if (paramUrl) {
+      sandboxUrl = paramUrl;
+    }
+
+    const sandboxOrigin = new URL(sandboxUrl, window.location.origin).origin;
+    if (sandboxOrigin === window.location.origin) {
+      runtimeState = 'error';
+      appendLog('stderr', 'Erro de segurança: Sandbox não pode rodar na mesma origem.');
+      throw new Error('Sandbox não pode rodar na mesma origem');
+    }
+
     if (!iframeElement) return;
 
     ideEnv = createIDEEnvironment(iframeElement, sandboxUrl);
@@ -152,13 +165,15 @@
     <Output lines={outputLines} onClear={clearOutput} />
   </main>
 
-  <iframe
-    bind:this={iframeElement}
-    src={sandboxUrl}
-    sandbox="allow-scripts allow-same-origin"
-    title="LiCode Sandbox Host"
-    class="sandbox-iframe"
-  ></iframe>
+  {#if runtimeState !== 'error'}
+    <iframe
+      bind:this={iframeElement}
+      src={sandboxUrl}
+      sandbox="allow-scripts allow-same-origin"
+      title="LiCode Sandbox Host"
+      class="sandbox-iframe"
+    ></iframe>
+  {/if}
 </div>
 
 <style>
