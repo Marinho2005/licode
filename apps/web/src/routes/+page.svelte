@@ -58,11 +58,19 @@
     exitStatus = null;
   }
 
+  let selectedLanguage = $state('javascript');
+
   onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const paramUrl = params.get('sandboxUrl');
     if (paramUrl) {
       sandboxUrl = paramUrl;
+    }
+
+    const paramLang = params.get('lang');
+    if (paramLang === 'python' || paramLang === 'py') {
+      selectedLanguage = 'python';
+      code = 'print("hello")';
     }
 
     if (new URL(sandboxUrl, location.href).origin === location.origin) {
@@ -77,12 +85,14 @@
     if (!iframeElement) return;
 
     ideEnv = createIDEEnvironment(iframeElement, sandboxUrl);
+    (window as unknown as { __licode_ide?: unknown }).__licode_ide = ideEnv;
+
     ideEnv.manager.onStateChange((_id: string, state: RuntimeState) => {
       runtimeState = state;
     });
 
-    // Pré-aquece o runtime JS
-    ideEnv.manager.prepare('javascript').catch((err: unknown) => {
+    // Pré-aquece o runtime selecionado
+    ideEnv.manager.prepare(selectedLanguage).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       appendLog('stderr', `Falha ao inicializar runtime: ${msg}`);
     });
@@ -97,9 +107,10 @@
     appendLog('system', '--- Iniciando sessão de execução ---');
 
     try {
-      const session = await ideEnv.manager.startSession('javascript', {
-        files: { 'index.js': code },
-        entry: 'index.js',
+      const entry = selectedLanguage === 'python' ? 'main.py' : 'index.js';
+      const session = await ideEnv.manager.startSession(selectedLanguage, {
+        files: { [entry]: code },
+        entry,
         limits: { wallMs: 3000 }
       });
       currentSession = session;
