@@ -81,7 +81,7 @@ export class SandboxBridge implements ISandboxBridge {
             type: 'licode:handshake-init',
             version: PROTOCOL_VERSION
           };
-          this.iframe.contentWindow.postMessage(initMsg, '*', [channel.port2]);
+          this.iframe.contentWindow.postMessage(initMsg, this.sandboxOrigin, [channel.port2]);
         } catch (err) {
           console.error('[LiCode Web Host] Erro ao enviar postMessage com port2:', err);
         }
@@ -89,6 +89,7 @@ export class SandboxBridge implements ISandboxBridge {
 
       const onWindowMessage = (ev: MessageEvent) => {
         if (isResolved) return;
+        if (ev.origin !== this.sandboxOrigin) return;
         console.log('[LiCode Web Host] Recebeu window message do parent/iframe:', ev.data);
         if (ev.data && ev.data.type === 'licode:sandbox-ready') {
           sendNewPort();
