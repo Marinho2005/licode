@@ -140,6 +140,46 @@ async function runSecurityTests() {
     console.log('✅ Cenário (b) APROVADO: UI web oficial (http://localhost:5173) estabeleceu handshake e atingiu .state-ready.');
 
     // -------------------------------------------------------------------------
+    // Cenário (b2): Testando que um segundo handshake-init é ignorado (aceita apenas 1x)
+    // -------------------------------------------------------------------------
+    console.log('\n--- Cenário (b2): Testando rejeição de segundo handshake-init (single handshake) ---');
+    let secondInitIgnoredLogged = false;
+    pageB.on('console', (msg) => {
+      const text = msg.text();
+      if (text.includes('Handshake ignorado: já existe um handshake ativo')) {
+        secondInitIgnoredLogged = true;
+        console.log('  [Console Sandbox esperado]:', text);
+      }
+    });
+
+    const secondInitResult = await pageB.evaluate(async () => {
+      const iframe = document.querySelector('iframe.sandbox-iframe');
+      if (!iframe || !iframe.contentWindow) return { error: 'iframe não encontrado' };
+
+      const channel = new MessageChannel();
+      let receivedSecondAck = false;
+
+      channel.port1.onmessage = () => {
+        receivedSecondAck = true;
+      };
+      channel.port1.start();
+
+      iframe.contentWindow.postMessage(
+        { type: 'licode:handshake-init', version: '1.0.0' },
+        'http://localhost:5174',
+        [channel.port2]
+      );
+
+      await new Promise((r) => setTimeout(r, 1000));
+      return { receivedSecondAck };
+    });
+
+    if (secondInitResult.receivedSecondAck) {
+      throw new Error('FALHA: Sandbox aceitou um segundo handshake-init após já estar conectado!');
+    }
+    console.log('✅ Cenário (b2) APROVADO: Segunda tentativa de handshake-init foi ignorada pelo sandbox.');
+
+    // -------------------------------------------------------------------------
     // Cenário (c): Tentar abrir com sandboxUrl igual à origem recusa carregar
     // -------------------------------------------------------------------------
     console.log('\n--- Cenário (c): Testando recusa quando sandboxUrl tem a mesma origem do web ---');
