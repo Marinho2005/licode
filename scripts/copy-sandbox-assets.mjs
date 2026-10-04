@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, access } from 'fs/promises'
+import { copyFile, mkdir, readFile, access, stat } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -17,7 +17,7 @@ async function fileExists(path) {
 async function copyAsset(src, dest) {
   await mkdir(dirname(dest), { recursive: true })
   await copyFile(src, dest)
-  const { size } = await readFile(dest)
+  const { size } = await stat(dest)
   console.log(`${dest} (${size} bytes)`)
 }
 
