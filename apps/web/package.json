@@ -11,7 +11,8 @@
   "dependencies": {
     "@licode/protocol": "workspace:*",
     "@licode/runtime-core": "workspace:*",
-    "@licode/runtime-js": "workspace:*"
+    "@licode/runtime-js": "workspace:*",
+    "@licode/runtime-python": "workspace:*"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.8",

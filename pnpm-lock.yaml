@@ -215,6 +215,9 @@ importers:
       '@licode/runtime-js':
         specifier: workspace:*
         version: link:../../packages/runtime-js
+      '@licode/runtime-python':
+        specifier: workspace:*
+        version: link:../../packages/runtime-python
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: ^3.0.8

@@ -130,6 +130,17 @@ export class SandboxBridge implements ISandboxBridge {
     const id = `install-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
     return new Promise<{ totalBytes: number; cached: boolean }>((resolve, reject) => {
+      const timeoutMs = 60000;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        port.removeEventListener('message', onMessage);
+      };
+
       const onMessage = (ev: MessageEvent<SandboxToHostMessage>) => {
         const msg = ev.data;
         if (!msg || msg.id !== id) return;
@@ -145,9 +156,10 @@ export class SandboxBridge implements ISandboxBridge {
         }
       };
 
-      const cleanup = () => {
-        port.removeEventListener('message', onMessage);
-      };
+      timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Timeout de instalação de assets para '${language}' (${timeoutMs}ms).`));
+      }, timeoutMs);
 
       port.addEventListener('message', onMessage);
 
