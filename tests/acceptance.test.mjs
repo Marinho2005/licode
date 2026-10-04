@@ -88,7 +88,8 @@ async function runAcceptanceTests() {
         let fullText = '';
         const buffer = term.buffer.active;
         for (let i = 0; i < buffer.length; i++) {
-          fullText += buffer.getLine(i).translateToString(true) + '\n';
+          const line = buffer.getLine(i);
+          fullText += (line.isWrapped ? '' : '\n') + line.translateToString(true);
         }
         return fullText;
       });
@@ -332,7 +333,8 @@ async function runAcceptanceTests() {
         let fullText = '';
         const buffer = term.buffer.active;
         for (let i = 0; i < buffer.length; i++) {
-          fullText += buffer.getLine(i).translateToString(true) + '\n';
+          const line = buffer.getLine(i);
+          fullText += (line.isWrapped ? '' : '\n') + line.translateToString(true);
         }
         return fullText;
       });
@@ -468,15 +470,18 @@ async function runAcceptanceTests() {
     console.log('\n--- Testando P-S0 (b): Same-Origin Sandbox Recusado ---');
     {
       await page.goto('http://localhost:5173/?sandboxUrl=http://localhost:5173/', { timeout: 30000 });
+
       await page.waitForFunction(() => {
         const term = window.__xterm;
         if (!term) return false;
         let fullText = '';
         const buffer = term.buffer.active;
         for (let i = 0; i < buffer.length; i++) {
-          fullText += buffer.getLine(i).translateToString(true) + '\n';
+          const line = buffer.getLine(i);
+          fullText += (line.isWrapped ? '' : '\n') + line.translateToString(true);
         }
-        return fullText.includes('Erro de segurança: Sandbox não pode rodar na mesma origem.');
+        const expected = 'Erro de segurança: Sandbox não pode rodar na mesma origem.';
+        return fullText.includes(expected) || fullText.replace(/\s+/g, ' ').includes(expected);
       }, { timeout: 10000 });
       console.log('✅ P-S0 (b) APROVADO: sandboxUrl de mesma origem foi recusado.');
       results.push({ criterion: 'P-S0 (b)', passed: true, detail: 'Erro de segurança disparado na UI e bloqueado' });

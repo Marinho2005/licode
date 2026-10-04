@@ -15,50 +15,42 @@
   let fitAddon: FitAddon;
   let resizeObserver: ResizeObserver;
 
-  // Batching state
+  // Batching & queue state
   let batchBuffer = '';
   let batchTimer: number | null = null;
+  let pendingLogs: Array<{ channel: 'stdout' | 'stderr' | 'system'; text: string }> = [];
 
   export function writeLog(channel: 'stdout' | 'stderr' | 'system', text: string) {
-    if (!term) return;
+    if (!term) {
+      pendingLogs.push({ channel, text });
+      return;
+    }
 
     let formatted = text.replace(/\n/g, '\r\n');
-    // Previne duplicação de \r
     formatted = formatted.replace(/\r\r\n/g, '\r\n');
 
     let sequence = '';
     if (channel === 'stderr') {
-      sequence = `\x1b[31m${formatted}\x1b[0m`;
+      sequence = `\x1b[31m${formatted}\x1b[0m\r\n`;
     } else if (channel === 'system') {
-      sequence = `\x1b[90;3m${formatted}\x1b[0m`;
+      sequence = `\x1b[90;3m${formatted}\x1b[0m\r\n`;
     } else {
       sequence = formatted;
     }
 
-    // Always add a newline after log entries since the old console appended divs per log.
-    // Wait, if it's stdout, does the runtime send partial lines or full lines?
-    // Python/Ruby usually send lines with \n, and Pyodide console sends full strings. 
-    // Wait! In the old console: "white-space: pre-wrap", so we just dump the text. But the old console was making a new div for each `appendLog`.
-    // We should append a newline to mimic the old `div` behavior if the incoming text isn't just chunks?
-    // Let's check how the previous events were handled. The previous `appendLog` created a whole new div block per `appendLog`.
-    // Wait, the sandbox actually sends stdout in chunks. If the previous one appended a div, it means `console.log` added `\n` in JS, but maybe Python `print` sent `\n` too.
-    // We will NOT append `\r\n` automatically unless we know it's a discrete log message (like system messages).
-    // The instructions say: "stdout normal, stderr em vermelho, mensagens do sistema em cinza/itálico".
-    // I'll add \r\n to system messages just to be safe, or just rely on the sender adding \n.
-    // Actually, "Iniciando sessão de execução" has no \n. So I should append \r\n to all messages if they don't have it? Or just let it be. Let's append \r\n.
-    // Wait, `term.write` doesn't append newlines. I'll just append \r\n.
-
-    batchBuffer += sequence;
-    if (channel === 'system') {
-      batchBuffer += '\r\n';
-    }
-
-    if (!batchTimer) {
-      batchTimer = requestAnimationFrame(() => {
-        term.write(batchBuffer);
-        batchBuffer = '';
-        batchTimer = null;
-      });
+    if (channel === 'stderr' || channel === 'system') {
+      term.write(sequence);
+    } else {
+      batchBuffer += sequence;
+      if (!batchTimer) {
+        batchTimer = requestAnimationFrame(() => {
+          if (term && batchBuffer) {
+            term.write(batchBuffer);
+          }
+          batchBuffer = '';
+          batchTimer = null;
+        });
+      }
     }
   }
 
@@ -76,25 +68,49 @@
     batchBuffer = '';
   }
 
+  export function refit() {
+    if (fitAddon) {
+      fitAddon.fit();
+    }
+  }
 
   onMount(() => {
     term = new Terminal({
       disableStdin: true,
       scrollback: 5000,
-      fontFamily: "'Fira Code', Consolas, monospace",
-      fontSize: 14,
+      fontFamily: "'Fira Code', Consolas, Monaco, monospace",
+      fontSize: 13,
+      lineHeight: 1.3,
       theme: {
-        background: '#090d13',
-        foreground: '#c9d1d9',
+        background: '#09090b',
+        foreground: '#e4e4e7',
+        cursor: '#38bdf8',
+        black: '#18181b',
+        red: '#ef4444',
+        green: '#10b981',
+        yellow: '#f59e0b',
+        blue: '#3b82f6',
+        magenta: '#d946ef',
+        cyan: '#06b6d4',
+        white: '#f4f4f5'
       }
     });
 
     fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    if (dev && browser) { (window as any).__xterm = term; }
+    if (dev && browser) {
+      (window as any).__xterm = term;
+    }
 
     term.open(terminalContainer);
     fitAddon.fit();
+
+    if (pendingLogs.length > 0) {
+      for (const item of pendingLogs) {
+        writeLog(item.channel, item.text);
+      }
+      pendingLogs = [];
+    }
 
     resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();
@@ -117,12 +133,38 @@
 </script>
 
 <section class="panel output-panel">
+  <!-- Terminal Tabs Bar (VS Code style) -->
   <div class="panel-header">
-    <span>Terminal</span>
-    <button class="btn btn-clear" onclick={onClear}>Limpar</button>
+    <div class="tabs-group">
+      <div class="term-tab active-term-tab">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5" />
+          <line x1="12" y1="19" x2="20" y2="19" />
+        </svg>
+        <span>TERMINAL</span>
+      </div>
+      <div class="term-tab">
+        <span>SAÍDA</span>
+      </div>
+    </div>
+
+    <div class="term-actions">
+      <button
+        type="button"
+        class="btn btn-clear"
+        onclick={onClear}
+        title="Limpar Terminal"
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+        </svg>
+        <span>Limpar</span>
+      </button>
+    </div>
   </div>
-  <div class="console-body" bind:this={terminalContainer}>
-  </div>
+
+  <div class="console-body" bind:this={terminalContainer}></div>
 </section>
 
 <style>
@@ -131,43 +173,83 @@
     flex-direction: column;
     overflow: hidden;
     height: 100%;
+    background: #09090b;
   }
 
   .output-panel {
-    background: #090d13;
+    background: #09090b;
   }
 
   .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 14px;
-    background: #161b22;
-    border-bottom: 1px solid #21262d;
-    font-size: 0.85rem;
-    font-weight: 600;
+    height: 36px;
+    padding: 0 10px;
+    background: #121214;
+    border-bottom: 1px solid #27272a;
+    user-select: none;
+    box-sizing: border-box;
+  }
+
+  .tabs-group {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    gap: 4px;
+  }
+
+  .term-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    padding: 0 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #71717a;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .active-term-tab {
+    color: #f4f4f5;
+    border-bottom-color: #38bdf8;
+  }
+
+  .term-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .btn-clear {
     background: transparent;
-    border: 1px solid #30363d;
-    color: #8b949e;
+    border: 1px solid #27272a;
+    color: #a1a1aa;
     padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.82rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
     cursor: pointer;
+    transition: all 0.15s;
   }
+
   .btn-clear:hover {
-    color: #c9d1d9;
-    border-color: #8b949e;
+    color: #f4f4f5;
+    border-color: #3f3f46;
+    background: #27272a;
   }
 
   .console-body {
     flex: 1;
-    overflow: hidden; /* xterm will handle scroll */
-    padding: 4px;
+    overflow: hidden;
+    padding: 6px 8px;
   }
-  
+
   :global(.xterm .xterm-viewport) {
     overflow-y: auto !important;
   }

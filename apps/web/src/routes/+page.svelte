@@ -12,7 +12,9 @@
   } from '$lib/languages.js';
 
   import Header from '$lib/components/Header.svelte';
-  import PresetsBar from '$lib/components/PresetsBar.svelte';
+  import ActivityBar from '$lib/components/ActivityBar.svelte';
+  import Sidebar from '$lib/components/Sidebar.svelte';
+  import StatusBar from '$lib/components/StatusBar.svelte';
   import Editor from '$lib/components/Editor.svelte';
   import Terminal from '$lib/components/Terminal.svelte';
 
@@ -31,16 +33,36 @@
   let runtimeState = $state<RuntimeState | 'error'>('not-installed');
   let execPhase = $state<'idle' | 'compiling' | 'running'>('idle');
   let exitStatus = $state<{ code: number; reason?: string } | null>(null);
-  let terminalRef: any;
+  let terminalRef: any = $state(null);
   let currentSession = $state<ExecutionSession | null>(null);
 
-  let ideEnv: ReturnType<typeof createIDEEnvironment> | null = null;
+  let earlyLogs: Array<{ channel: 'stdout' | 'stderr' | 'system'; text: string }> = [];
 
   function appendLog(channel: 'stdout' | 'stderr' | 'system', text: string) {
     if (terminalRef) {
       terminalRef.writeLog(channel, text);
+    } else {
+      earlyLogs.push({ channel, text });
     }
   }
+
+  $effect(() => {
+    if (terminalRef && earlyLogs.length > 0) {
+      for (const log of earlyLogs) {
+        terminalRef.writeLog(log.channel, log.text);
+      }
+      earlyLogs = [];
+    }
+  });
+
+  let ideEnv: ReturnType<typeof createIDEEnvironment> | null = null;
+
+  // Layout states: ActivityBar, Sidebar, Workspace Resizer
+  let activeActivityTab = $state<'explorer' | 'presets' | 'settings'>('explorer');
+  let isSidebarOpen = $state(true);
+  let sidebarWidth = $state(260);
+  let editorSplitPercentage = $state(52); // Editor 52%, Terminal 48%
+  let isWorkspaceResizing = $state(false);
 
   function clearOutput() {
     if (terminalRef) {
@@ -91,6 +113,51 @@
     }
   }
 
+  function handleActivityTabClick(tab: 'explorer' | 'presets' | 'settings') {
+    if (activeActivityTab === tab && isSidebarOpen) {
+      isSidebarOpen = false;
+    } else {
+      activeActivityTab = tab;
+      isSidebarOpen = true;
+    }
+  }
+
+  function toggleSidebar() {
+    isSidebarOpen = !isSidebarOpen;
+  }
+
+  // Divisor flexível entre Editor e Terminal
+  function startWorkspaceResize(e: PointerEvent) {
+    e.preventDefault();
+    isWorkspaceResizing = true;
+
+    const workspaceEl = document.querySelector('.main-workspace') as HTMLElement | null;
+    if (!workspaceEl) return;
+
+    const rect = workspaceEl.getBoundingClientRect();
+
+    function onPointerMove(moveEvent: PointerEvent) {
+      const offsetX = moveEvent.clientX - rect.left;
+      const percentage = Math.min(Math.max((offsetX / rect.width) * 100, 20), 80);
+      editorSplitPercentage = percentage;
+      if (terminalRef?.refit) {
+        terminalRef.refit();
+      }
+    }
+
+    function onPointerUp() {
+      isWorkspaceResizing = false;
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      if (terminalRef?.refit) {
+        terminalRef.refit();
+      }
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  }
+
   onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const paramUrl = params.get('sandboxUrl');
@@ -103,12 +170,14 @@
       changeLanguage(paramLang);
     }
 
-    if (new URL(sandboxUrl, location.href).origin === location.origin) {
+    const effectiveSandboxUrl = paramUrl || sandboxUrl;
+    if (new URL(effectiveSandboxUrl, location.href).origin === location.origin) {
+      console.error('[LiCode Security] Erro de segurança: Sandbox não pode rodar na mesma origem.');
       runtimeState = 'error';
       appendLog('stderr', 'Erro de segurança: Sandbox não pode rodar na mesma origem.');
       setTimeout(() => {
         throw new Error('Sandbox não pode rodar na mesma origem');
-      }, 0);
+      }, 50);
       return;
     }
 
@@ -129,6 +198,19 @@
         appendLog('stderr', `Falha ao inicializar runtime: ${msg}`);
       });
     }
+
+    // Atalhos globais
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    }
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
   });
 
   async function handleRun() {
@@ -192,47 +274,81 @@
 </script>
 
 <div class="app-container">
+  <!-- Top Header (Replit / VS Code style) -->
   <Header
     {runtimeState}
     {execPhase}
     {exitStatus}
     runtimeLabel={currentProfile.runtimeLabel}
+    isRunDisabled={execPhase !== 'idle' || runtimeState !== 'ready' || !currentProfile.runtimeReady}
+    isStopDisabled={execPhase === 'idle'}
+    onRun={handleRun}
+    onStop={handleStop}
   />
 
-  <div class="lang-selector">
-    <label class="lang-label" for="select-language">
-      Linguagem:
-      <select
-        id="select-language"
-        class="lang-select"
-        value={selectedLanguageId}
-        onchange={(e) => changeLanguage((e.currentTarget as HTMLSelectElement).value)}
-      >
-        {#each LANGUAGES as lang}
-          <option value={lang.id}>
-            {lang.label}
-          </option>
-        {/each}
-      </select>
-    </label>
-  </div>
-
-  <PresetsBar presets={currentProfile.examples} onSelect={loadPreset} />
-
-  <main class="main-layout">
-    <Editor
-      bind:code
-      entryFile={currentProfile.entryFile}
-      languageLabel={currentProfile.label}
-      isRunDisabled={execPhase !== 'idle' || runtimeState !== 'ready' || !currentProfile.runtimeReady}
-      isStopDisabled={execPhase === 'idle'}
-      onRun={handleRun}
-      onStop={handleStop}
+  <!-- Main IDE Body -->
+  <div class="workspace-body">
+    <!-- Left Activity Bar (48px fixed) -->
+    <ActivityBar
+      activeTab={activeActivityTab}
+      {isSidebarOpen}
+      onTabClick={handleActivityTabClick}
     />
 
-    <Terminal bind:this={terminalRef} onClear={clearOutput} />
-  </main>
+    <!-- Flexible Resizable Sidebar -->
+    <Sidebar
+      activeTab={activeActivityTab}
+      bind:width={sidebarWidth}
+      isOpen={isSidebarOpen}
+      languages={LANGUAGES}
+      {selectedLanguageId}
+      {currentProfile}
+      {runtimeState}
+      onSelectLanguage={changeLanguage}
+      onSelectPreset={loadPreset}
+      onClose={() => (isSidebarOpen = false)}
+    />
 
+    <!-- Main Workspace (Editor + Splitter + Terminal) -->
+    <main class="main-workspace" class:workspace-resizing={isWorkspaceResizing}>
+      <div class="editor-pane" style="width: {editorSplitPercentage}%;">
+        <Editor
+          bind:code
+          entryFile={currentProfile.entryFile}
+          languageLabel={currentProfile.label}
+          isRunDisabled={execPhase !== 'idle' || runtimeState !== 'ready' || !currentProfile.runtimeReady}
+          isStopDisabled={execPhase === 'idle'}
+          onRun={handleRun}
+          onStop={handleStop}
+        />
+      </div>
+
+      <!-- Draggable Splitter between Editor and Terminal -->
+      <div
+        class="workspace-splitter"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Ajustar proporção entre Editor e Terminal"
+        onpointerdown={startWorkspaceResize}
+      ></div>
+
+      <div class="terminal-pane" style="width: {100 - editorSplitPercentage}%;">
+        <Terminal bind:this={terminalRef} onClear={clearOutput} />
+      </div>
+    </main>
+  </div>
+
+  <!-- Bottom Status Bar (VS Code style) -->
+  <StatusBar
+    languageLabel={currentProfile.label}
+    {runtimeState}
+    {execPhase}
+    {exitStatus}
+    {isSidebarOpen}
+    onToggleSidebar={toggleSidebar}
+  />
+
+  <!-- Sandbox Iframe (Hidden / Isolated) -->
   {#if runtimeState !== 'error'}
     <iframe
       bind:this={iframeElement}
@@ -249,23 +365,70 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    background: #0d1117;
-    color: #c9d1d9;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #09090b;
+    color: #e4e4e7;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    user-select: none;
+    overflow: hidden;
   }
 
   .app-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    width: 100vw;
     overflow: hidden;
+    background: #09090b;
   }
 
-  .main-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  .workspace-body {
+    display: flex;
     flex: 1;
     overflow: hidden;
+    position: relative;
+  }
+
+  .main-workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #18181b;
+  }
+
+  .main-workspace.workspace-resizing {
+    user-select: none;
+    cursor: col-resize;
+  }
+
+  .editor-pane {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .terminal-pane {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Draggable Splitter */
+  .workspace-splitter {
+    width: 4px;
+    height: 100%;
+    background: #27272a;
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    z-index: 5;
+  }
+
+  .workspace-splitter:hover,
+  .main-workspace.workspace-resizing .workspace-splitter {
+    background: #38bdf8;
   }
 
   .sandbox-iframe {
@@ -274,38 +437,5 @@
     height: 0;
     border: none;
     visibility: hidden;
-  }
-
-  .lang-selector {
-    padding: 8px 18px;
-    background: #0d1117;
-    border-bottom: 1px solid #21262d;
-    display: flex;
-    align-items: center;
-  }
-
-  .lang-label {
-    font-size: 0.85rem;
-    color: #8b949e;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .lang-select {
-    background: #21262d;
-    color: #f0f6fc;
-    padding: 5px 10px;
-    border-radius: 6px;
-    border: 1px solid #30363d;
-    font-size: 0.82rem;
-    font-weight: 500;
-    cursor: pointer;
-    outline: none;
-  }
-
-  .lang-select:focus {
-    border-color: #58a6ff;
   }
 </style>
