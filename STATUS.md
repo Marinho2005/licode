@@ -23,3 +23,19 @@
 - Adicionar os testes end-to-end de aceitação para o Ruby no arquivo `tests/acceptance.test.mjs`.
 - Atualizar o `README.md` listando as linguagens suportadas e os tamanhos dos downloads correspondentes.
 - Preparar qualquer modificação extra para CI (se houver especificidades para testar Ruby no CI fora do `pnpm test` atual).
+
+## S3: XTERM.JS
+- **Status:** DEV concluído (Aguardando Pedreiro)
+- **Branch:** `feat/phase3-xterm`
+- **Detalhes:**
+  - @xterm/xterm e @xterm/addon-fit instalados com versão exata.
+  - Svelte Component `Terminal.svelte` implementado substituindo o antigo `Output.svelte`.
+  - ANSI colors (`\x1b[31m`, `\x1b[90;3m`) adicionadas para stderr e mensagens de sistema.
+  - Output fora do Svelte store, processamento via `requestAnimationFrame`.
+  - DisableStdin configurado. Scrollback: 5000 linhas.
+  - Instância exposta como `window.__xterm` (apenas em dev) para o playwright testar.
+
+### Pendências (ZONA VERDE / PEDREIRO):
+- **P-xterm:** Atualizar o `tests/acceptance.test.mjs` para buscar os logs no `window.__xterm`.
+- **P-S0:** Implementar testes de um segundo init ignorado e sandboxUrl de mesma origem recusada.
+- **README:** Adicionar a seção do terminal e documentar as limitações (somente saída, stdin batch).

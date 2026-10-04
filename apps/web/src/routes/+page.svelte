@@ -14,7 +14,7 @@
   import Header from '$lib/components/Header.svelte';
   import PresetsBar from '$lib/components/PresetsBar.svelte';
   import Editor from '$lib/components/Editor.svelte';
-  import Output, { type OutputLine } from '$lib/components/Output.svelte';
+  import Terminal from '$lib/components/Terminal.svelte';
 
   let iframeElement = $state<HTMLIFrameElement | null>(null);
   let sandboxUrl = $state(DEFAULT_SANDBOX_URL);
@@ -31,18 +31,21 @@
   let runtimeState = $state<RuntimeState | 'error'>('not-installed');
   let execPhase = $state<'idle' | 'compiling' | 'running'>('idle');
   let exitStatus = $state<{ code: number; reason?: string } | null>(null);
-  let outputLines = $state<OutputLine[]>([]);
+  let terminalRef: any;
   let currentSession = $state<ExecutionSession | null>(null);
-  let nextLineId = 0;
 
   let ideEnv: ReturnType<typeof createIDEEnvironment> | null = null;
 
   function appendLog(channel: 'stdout' | 'stderr' | 'system', text: string) {
-    outputLines = [...outputLines, { id: ++nextLineId, channel, text }];
+    if (terminalRef) {
+      terminalRef.writeLog(channel, text);
+    }
   }
 
   function clearOutput() {
-    outputLines = [];
+    if (terminalRef) {
+      terminalRef.clear();
+    }
     exitStatus = null;
   }
 
@@ -227,7 +230,7 @@
       onStop={handleStop}
     />
 
-    <Output lines={outputLines} onClear={clearOutput} />
+    <Terminal bind:this={terminalRef} onClear={clearOutput} />
   </main>
 
   {#if runtimeState !== 'error'}
