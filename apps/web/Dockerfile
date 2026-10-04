@@ -15,6 +15,7 @@ COPY pnpm-lock.yaml package.json pnpm-workspace.yaml .npmrc tsconfig.base.json .
 COPY packages/protocol ./packages/protocol
 COPY packages/runtime-core ./packages/runtime-core
 COPY packages/runtime-js ./packages/runtime-js
+COPY packages/runtime-python ./packages/runtime-python
 COPY apps/web ./apps/web
 
 # Instala dependências de forma congelada
@@ -24,6 +25,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @licode/protocol build
 RUN pnpm --filter @licode/runtime-core build
 RUN pnpm --filter @licode/runtime-js build
+RUN pnpm --filter @licode/runtime-python build
 RUN pnpm --filter @licode/web build
 
 # Estágio de Produção
