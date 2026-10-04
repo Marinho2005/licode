@@ -10,6 +10,7 @@ RUN corepack enable
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY packages/protocol ./packages/protocol
 COPY apps/sandbox ./apps/sandbox
+COPY scripts ./scripts
 
 # Instala dependências do workspace de forma congelada e determinística
 RUN pnpm install --frozen-lockfile
