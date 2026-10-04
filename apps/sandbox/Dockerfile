@@ -17,6 +17,9 @@ RUN pnpm install --frozen-lockfile
 
 # Compila o pacote de protocolo e o host do sandbox
 RUN pnpm --filter @licode/protocol build
+
+ARG VITE_ALLOWED_PARENT_ORIGINS
+ENV VITE_ALLOWED_PARENT_ORIGINS=${VITE_ALLOWED_PARENT_ORIGINS}
 RUN pnpm --filter @licode/sandbox build
 
 # Estágio de Produção

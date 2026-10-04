@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: apps/sandbox/Dockerfile
+      args:
+        VITE_ALLOWED_PARENT_ORIGINS: "http://localhost:${WEB_PORT:-8080}"
     ports:
       - "${SANDBOX_PORT:-8081}:80"
     healthcheck:

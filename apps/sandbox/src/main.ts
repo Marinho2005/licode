@@ -79,15 +79,26 @@ function setupPort(port: MessagePort) {
   console.log('[LiCode Sandbox] Handshake estabelecido com sucesso via MessagePort!');
 }
 
-const DEFAULT_ALLOWED_PARENT_ORIGINS = ['http://localhost:5173', 'http://localhost:8080'];
+const env = (import.meta as unknown as { env?: Record<string, any> }).env;
+const envAllowed = env?.VITE_ALLOWED_PARENT_ORIGINS;
+const isDev = Boolean(env?.DEV);
 
-const envAllowed = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_ALLOWED_PARENT_ORIGINS;
+// Em produção sem VITE_ALLOWED_PARENT_ORIGINS: a lista deve ser vazia (falha fechada).
+// Defaults (localhost:5173, :8080) são permitidos apenas em dev.
 const allowedParentOrigins: string[] = envAllowed
-  ? (envAllowed as string)
+  ? String(envAllowed)
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
-  : DEFAULT_ALLOWED_PARENT_ORIGINS;
+  : isDev
+    ? ['http://localhost:5173', 'http://localhost:8080']
+    : [];
+
+if (allowedParentOrigins.length === 0) {
+  console.error(
+    '[LiCode Sandbox Security] Nenhuma origem de host permitida configurada (falha fechada). O sandbox rejeitará todas as tentativas de handshake.'
+  );
+}
 
 window.addEventListener('message', (ev: MessageEvent) => {
   const data = ev.data;
@@ -96,22 +107,41 @@ window.addEventListener('message', (ev: MessageEvent) => {
     return;
   }
 
-  if (ev.source !== window.parent || !allowedParentOrigins.includes(ev.origin)) {
+  // 1) Ordem estrita: validar event.origin na lista de permitidos
+  if (!allowedParentOrigins.includes(ev.origin)) {
     console.warn(
-      `[LiCode Sandbox Security] Handshake rejeitado: origin="${ev.origin}", sourceMatch=${ev.source === window.parent}. Origens permitidas: ${allowedParentOrigins.join(', ')}`
+      `[LiCode Sandbox Security] Handshake rejeitado: origin="${ev.origin}" não permitida. Origens permitidas: [${allowedParentOrigins.join(', ')}]`
     );
     return;
   }
 
-  if (ev.ports && ev.ports[0]) {
-    console.log('[LiCode Sandbox] MessagePort recebida, configurando...');
-    setupPort(ev.ports[0]);
+  // 2) Ordem estrita: validar event.source === window.parent
+  if (ev.source !== window.parent) {
+    console.warn(
+      `[LiCode Sandbox Security] Handshake rejeitado: origin correta, mas source não é window.parent (sourceMatch=${ev.source === window.parent}).`
+    );
+    return;
   }
+
+  // O handshake deve ser aceito apenas UMA vez; tentativas seguintes devem ser ignoradas com log
+  if (boundPort) {
+    console.warn('[LiCode Sandbox Security] Handshake ignorado: já existe um handshake ativo previamente estabelecido.');
+    return;
+  }
+
+  // 3) SÓ ENTÃO usar event.ports[0] ou criar Worker
+  if (!ev.ports || !ev.ports[0]) {
+    console.warn('[LiCode Sandbox Security] Handshake rejeitado: nenhuma MessagePort fornecida em event.ports[0].');
+    return;
+  }
+
+  console.log('[LiCode Sandbox] MessagePort recebida, configurando...');
+  setupPort(ev.ports[0]);
 });
 
 // Anuncia ao pai que o sandbox está carregado
 function pingReady() {
-  if (boundPort) return;
+  if (boundPort || allowedParentOrigins.length === 0) return;
   console.log('[LiCode Sandbox] Emitindo licode:sandbox-ready para parent...');
   for (const origin of allowedParentOrigins) {
     try {
@@ -124,7 +154,7 @@ function pingReady() {
 
 pingReady();
 const readyInterval = setInterval(() => {
-  if (boundPort) {
+  if (boundPort || allowedParentOrigins.length === 0) {
     clearInterval(readyInterval);
   } else {
     pingReady();
