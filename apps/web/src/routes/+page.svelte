@@ -59,6 +59,12 @@
   }
 
   let selectedLanguage = $state('javascript');
+  function changeLanguage(lang) {
+    selectedLanguage = lang;
+    code = lang === 'python' ? 'print("hello python")' : PRESETS.hello.code;
+    clearOutput();
+    if (ideEnv) ideEnv.manager.prepare(lang).catch(e => appendLog('stderr', e.message));
+  }
 
   onMount(() => {
     const params = new URLSearchParams(window.location.search);
@@ -164,6 +170,14 @@
 <div class="app-container">
   <Header {runtimeState} {execPhase} {exitStatus} />
 
+  <div class="lang-selector">
+    <label>Linguagem: 
+      <select value={selectedLanguage} onchange={(e) => changeLanguage(e.target.value)}>
+        <option value="javascript">JavaScript</option>
+        <option value="python">Python</option>
+      </select>
+    </label>
+  </div>
   <PresetsBar presets={PRESETS} onSelect={loadPreset} />
 
   <main class="main-layout">
@@ -220,4 +234,6 @@
     border: none;
     visibility: hidden;
   }
+  .lang-selector { padding: 8px 18px; background: #0d1117; border-bottom: 1px solid #21262d; }
+  .lang-selector select { background: #21262d; color: #fff; padding: 4px; border-radius: 4px; border: 1px solid #30363d; margin-left: 8px; }
 </style>
