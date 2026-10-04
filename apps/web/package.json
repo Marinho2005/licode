@@ -1,0 +1,25 @@
+{
+  "name": "@licode/web",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 5173",
+    "build": "svelte-kit sync && vite build",
+    "preview": "vite preview --port 5173",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@licode/protocol": "workspace:*",
+    "@licode/runtime-core": "workspace:*",
+    "@licode/runtime-js": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.8",
+    "@sveltejs/kit": "^2.18.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "svelte": "^5.22.4",
+    "svelte-check": "^4.1.5",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}

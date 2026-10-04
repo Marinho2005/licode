@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Habilitar Corepack e pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.9.1 --activate
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Checagem estrita de tipos (TypeScript)
+        run: pnpm typecheck
+
+      - name: Compilar todos os pacotes e apps
+        run: pnpm build
+
+      - name: Build da imagem Docker apps/sandbox
+        run: docker build -t licode-sandbox:test -f apps/sandbox/Dockerfile .
+
+      - name: Build da imagem Docker apps/web
+        run: docker build -t licode-web:test -f apps/web/Dockerfile .
