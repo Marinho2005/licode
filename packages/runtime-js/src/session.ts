@@ -47,6 +47,7 @@ export class JSExecutionSession implements ExecutionSession {
       id: this.sessionId,
       version: PROTOCOL_VERSION,
       type: 'exec',
+      language: 'js',
       files: spec.files,
       entry: spec.entry,
       limits: {
