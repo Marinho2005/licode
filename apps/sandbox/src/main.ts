@@ -79,10 +79,27 @@ function setupPort(port: MessagePort) {
   console.log('[LiCode Sandbox] Handshake estabelecido com sucesso via MessagePort!');
 }
 
+const DEFAULT_ALLOWED_PARENT_ORIGINS = ['http://localhost:5173', 'http://localhost:8080'];
+
+const envAllowed = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_ALLOWED_PARENT_ORIGINS;
+const allowedParentOrigins: string[] = envAllowed
+  ? (envAllowed as string)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : DEFAULT_ALLOWED_PARENT_ORIGINS;
+
 window.addEventListener('message', (ev: MessageEvent) => {
   const data = ev.data;
   console.log('[LiCode Sandbox] Recebeu window message:', data);
   if (!data || data.type !== 'licode:handshake-init') {
+    return;
+  }
+
+  if (ev.source !== window.parent || !allowedParentOrigins.includes(ev.origin)) {
+    console.warn(
+      `[LiCode Sandbox Security] Handshake rejeitado: origin="${ev.origin}", sourceMatch=${ev.source === window.parent}. Origens permitidas: ${allowedParentOrigins.join(', ')}`
+    );
     return;
   }
 
@@ -96,10 +113,12 @@ window.addEventListener('message', (ev: MessageEvent) => {
 function pingReady() {
   if (boundPort) return;
   console.log('[LiCode Sandbox] Emitindo licode:sandbox-ready para parent...');
-  try {
-    window.parent.postMessage({ type: 'licode:sandbox-ready', version: PROTOCOL_VERSION }, '*');
-  } catch (err) {
-    console.error('[LiCode Sandbox] Erro ao postar para parent:', err);
+  for (const origin of allowedParentOrigins) {
+    try {
+      window.parent.postMessage({ type: 'licode:sandbox-ready', version: PROTOCOL_VERSION }, origin);
+    } catch (err) {
+      console.error(`[LiCode Sandbox] Erro ao postar para parent origin ${origin}:`, err);
+    }
   }
 }
 
