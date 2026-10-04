@@ -94,10 +94,10 @@ export const LANGUAGES: LanguageProfile[] = [
   },
   {
     id: 'ruby',
-    label: 'Ruby (Em breve)',
+    label: 'Ruby',
     runtimeLabel: 'Runtime Ruby',
     entryFile: 'main.rb',
-    runtimeReady: false,
+    runtimeReady: true,
     examples: [
       {
         id: 'hello',
@@ -122,7 +122,7 @@ export const LANGUAGES: LanguageProfile[] = [
       {
         id: 'security',
         label: '5. Isolamento (Escape Test)',
-        code: 'puts "Isolamento Ruby ativo"'
+        code: 'puts "Tentando acessar js/window/document..."\nbegin\n  require "js"\n  w = JS.global[:window]\n  puts "window: #{w}"\nrescue LoadError, StandardError => e\n  puts "js bloqueado: #{e.message}"\nend'
       },
       {
         id: 'asyncInterval',

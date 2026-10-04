@@ -16,6 +16,7 @@ COPY packages/protocol ./packages/protocol
 COPY packages/runtime-core ./packages/runtime-core
 COPY packages/runtime-js ./packages/runtime-js
 COPY packages/runtime-python ./packages/runtime-python
+COPY packages/runtime-ruby ./packages/runtime-ruby
 COPY apps/web ./apps/web
 
 # Instala dependências de forma congelada
@@ -26,6 +27,7 @@ RUN pnpm --filter @licode/protocol build
 RUN pnpm --filter @licode/runtime-core build
 RUN pnpm --filter @licode/runtime-js build
 RUN pnpm --filter @licode/runtime-python build
+RUN pnpm --filter @licode/runtime-ruby build
 RUN pnpm --filter @licode/web build
 
 # Estágio de Produção

@@ -16,6 +16,6 @@ export const ASSET_MANIFEST: Record<
   ruby: {
     version: '2.10.1',
     baseUrl: '/assets/ruby/2.10.1/',
-    files: []
+    files: ['ruby+stdlib.wasm']
   }
 };
