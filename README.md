@@ -1,6 +1,16 @@
 # LiCode.dev — IDE no navegador
 
-O LiCode executa código no navegador usando Web Workers e WebAssembly, sem servidor de execução.
+O LiCode executa código no navegador usando Web Workers e WebAssembly, sem servidor de execução backend.
+
+![LiCode.dev Preview](preview.png)
+
+## Acesso em Produção
+
+A aplicação está disponível e operando com duas origens separadas por razões de segurança:
+- **Interface Web**: [https://licode-web.vercel.app](https://licode-web.vercel.app)
+- **Sandbox de Execução**: [https://licode-sandbox.vercel.app](https://licode-sandbox.vercel.app)
+
+---
 
 ## Executar localmente
 
@@ -23,19 +33,19 @@ pnpm test
 
 ## Estrutura
 
-- `apps/web`: interface SvelteKit, editor e integração com os runtimes.
+- `apps/web`: interface SvelteKit, editor, terminal xterm.js e integração com os runtimes.
 - `apps/sandbox`: host isolado por origem que inicia workers efêmeros para executar código.
 - `packages/protocol`: tipos das mensagens entre interface, sandbox e workers.
 - `packages/runtime-core`: interfaces e registro de runtimes.
 - `packages/runtime-*`: runtimes de JavaScript, Python e Ruby.
 
-## Linguagens
+## Linguagens Suportadas
 
-- JavaScript: engine nativa do navegador, em worker isolado.
-- TypeScript: transpilado em worker separado.
-- Python: CPython via Pyodide/WebAssembly.
-- Ruby: CRuby via ruby.wasm.
-- C: compilação e execução via WebAssembly/WASI no navegador.
+- **JavaScript**: engine nativa do navegador, em Web Worker isolado.
+- **TypeScript**: transpilado e executado em worker dedicado.
+- **Python**: CPython 3.12 via Pyodide/WebAssembly com suporte a cache local.
+- **Ruby**: CRuby 3.4 via `ruby.wasm` com suporte a stdlib e cache local.
+- **C / C++**: *Em desenvolvimento / experimental (não disponível/não funcional nesta versão de produção)*.
 
 ## Segurança e limites
 
@@ -82,4 +92,3 @@ vercel deploy apps/web/build --prod --yes --name licode-web
 ```
 
 > **Nota:** Para Cloudflare Pages, a estrutura de pastas e os arquivos `_headers` gerados nas pastas de saída são 100% compatíveis, utilizando `wrangler pages deploy apps/sandbox/dist --project-name=licode-sandbox` e `wrangler pages deploy apps/web/build --project-name=licode-web`.
-
