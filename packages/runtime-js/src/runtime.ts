@@ -20,7 +20,7 @@ export class JavaScriptRuntime implements Runtime {
 
   private sessionCounter = 0;
 
-  constructor(private readonly bridge: ISandboxBridge) {}
+  constructor(protected readonly bridge: ISandboxBridge) {}
 
   async install(onProgress: (p: number) => void): Promise<void> {
     // JavaScript nativo do navegador já está pronto
@@ -44,5 +44,25 @@ export class JavaScriptRuntime implements Runtime {
 
   async dispose(): Promise<void> {
     // Nada persistente a liberar no cliente
+  }
+}
+
+export class TypeScriptRuntime extends JavaScriptRuntime {
+  public override readonly descriptor: RuntimeDescriptor = {
+    id: 'typescript',
+    languages: ['typescript', 'ts'],
+    build: 'browser',
+    exec: 'browser',
+    capabilities: { stdin: 'none', interrupt: 'terminate-only' }
+  };
+
+  public override async start(spec: {
+    files: Record<string, string>;
+    entry: string;
+    limits: { wallMs: number };
+  }): Promise<ExecutionSession> {
+    await this.bridge.ensureReady();
+    const sessionId = `ts-exec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return new JSExecutionSession(this.bridge.getPort(), sessionId, { ...spec, language: 'typescript' });
   }
 }

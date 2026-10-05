@@ -52,8 +52,8 @@ self.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
 self.addEventListener('message', async (ev: MessageEvent<WorkerInitMessage>) => {
   const { files, entry } = ev.data;
 
-  // Notifica o host que o worker iniciou execução
-  self.postMessage({ type: 'phase', phase: 'running' } satisfies WorkerToHostMessage);
+  // A inicialização do interpretador não consome o limite de execução do usuário.
+  self.postMessage({ type: 'phase', phase: 'compiling' } satisfies WorkerToHostMessage);
 
   try {
     const origin = self.location.origin;
@@ -91,6 +91,8 @@ self.addEventListener('message', async (ev: MessageEvent<WorkerInitMessage>) => 
       error: false,
       stdin: () => null
     });
+
+    self.postMessage({ type: 'phase', phase: 'running' } satisfies WorkerToHostMessage);
 
     for (const [filename, content] of Object.entries(files)) {
       try {

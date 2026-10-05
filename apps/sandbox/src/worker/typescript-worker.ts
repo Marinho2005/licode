@@ -1,4 +1,5 @@
 import type { WorkerInitMessage, WorkerToHostMessage } from '@licode/protocol';
+import ts from 'typescript';
 
 function formatArg(arg: unknown): string {
   if (arg === undefined) return 'undefined';
@@ -73,9 +74,21 @@ self.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
 self.addEventListener('message', async (ev: MessageEvent<WorkerInitMessage>) => {
   const { files, entry } = ev.data;
 
-  const code = files[entry] || '';
+  let code = files[entry] || '';
 
   try {
+    const transpiled = ts.transpileModule(code, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
+    });
+    code = transpiled.outputText;
+    const diagnostics = transpiled.diagnostics ?? [];
+    if (diagnostics.some((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)) {
+      throw new Error(ts.formatDiagnostics(diagnostics, {
+        getCanonicalFileName: (file) => file,
+        getCurrentDirectory: () => '/',
+        getNewLine: () => '\n'
+      }));
+    }
     self.postMessage({ type: 'phase', phase: 'running' } satisfies WorkerToHostMessage);
     // Executa o código em escopo estrito
     // Function construtor executa no escopo global do Worker

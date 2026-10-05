@@ -14,7 +14,7 @@ export async function installAssets(
   language: Language,
   onProgress?: ProgressCallback
 ): Promise<InstallResult> {
-  if (language === 'js') {
+  if (language === 'js' || language === 'typescript') {
     return { totalBytes: 0, cached: true };
   }
 

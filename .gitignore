@@ -28,6 +28,7 @@ build
 coverage
 
 apps/sandbox/public/assets/
+spike/cpp/.wasmer/
 
 # Compiled outputs in src
 packages/*/src/**/*.js

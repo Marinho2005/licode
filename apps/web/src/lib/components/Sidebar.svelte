@@ -53,8 +53,10 @@
 
   function getFileIcon(langId: string) {
     if (langId === 'javascript') return { ext: 'JS', color: '#f7df1e' };
+    if (langId === 'typescript') return { ext: 'TS', color: '#3178c6' };
     if (langId === 'python') return { ext: 'PY', color: '#38bdf8' };
     if (langId === 'ruby') return { ext: 'RB', color: '#f43f5e' };
+    if (langId === 'c') return { ext: 'C', color: '#a8b9cc' };
     return { ext: '<>', color: '#a1a1aa' };
   }
 </script>

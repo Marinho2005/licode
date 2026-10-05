@@ -69,9 +69,15 @@ export class SandboxSessionHost {
           type: 'module'
         });
       } else {
-        this.worker = new Worker(new URL('./worker/exec-worker.ts', import.meta.url), {
-          type: 'module'
-        });
+        if (this.spec.language === 'typescript') {
+          this.worker = new Worker(new URL('./worker/typescript-worker.ts', import.meta.url), {
+            type: 'module'
+          });
+        } else {
+          this.worker = new Worker(new URL('./worker/exec-worker.ts', import.meta.url), {
+            type: 'module'
+          });
+        }
       }
     } catch (err: unknown) {
       this.sendEvent({
@@ -82,11 +88,12 @@ export class SandboxSessionHost {
       return;
     }
 
-    // 3. Configura timer de timeout NA THREAD DO HOST
+    // Python precisa inicializar o interpretador Wasm antes de executar o código.
+    // O watchdog de inicialização é separado do limite do programa do usuário.
     const wallMs = this.spec.limits.wallMs || DEFAULT_WALL_LIMIT_MS;
     this.timeoutTimer = setTimeout(() => {
       this.handleTimeout();
-    }, wallMs);
+    }, this.spec.language === 'python' ? 60_000 : wallMs);
 
     // 4. Inicia loop de batch de logs
     this.scheduleBatchFlush();
@@ -97,6 +104,10 @@ export class SandboxSessionHost {
       const msg = ev.data;
 
       if (msg.type === 'phase') {
+        if (msg.phase === 'running' && this.spec.language === 'python') {
+          if (this.timeoutTimer) clearTimeout(this.timeoutTimer);
+          this.timeoutTimer = setTimeout(() => this.handleTimeout(), wallMs);
+        }
         this.sendEvent({ t: 'phase', phase: msg.phase });
       } else if (msg.type === 'output') {
         this.queueOutput(msg.channel, msg.data);

@@ -1,4 +1,5 @@
-export type Language = 'js' | 'python' | 'ruby';
+export type Language = 'js' | 'typescript' | 'python' | 'ruby';
+export type WorkerLanguage = Language | 'c';
 
 export type ExecPhase = 'compiling' | 'running';
 
@@ -87,7 +88,7 @@ export type SandboxToHostMessage =
 // Mensagens internas entre o Sandbox Host e o Web Worker descartável
 export type WorkerInitMessage = {
   id: string;
-  language: Language;
+  language: WorkerLanguage;
   files: Record<string, string>;
   entry: string;
 };
@@ -96,4 +97,3 @@ export type WorkerToHostMessage =
   | { type: 'phase'; phase: ExecPhase }
   | { type: 'output'; channel: 'stdout' | 'stderr'; data: string }
   | { type: 'exit'; code: number; error?: string };
-

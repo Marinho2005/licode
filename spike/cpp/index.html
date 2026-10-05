@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LiCode C++ Wasm Spike</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1020;
+        --panel: #121b2d;
+        --panel-alt: #1a2a43;
+        --text: #edf4ff;
+        --muted: #aac2ef;
+        --accent: #5ac8fa;
+        --danger: #ff6b6b;
+        --success: #4ade80;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, system-ui, sans-serif;
+      }
+      .layout {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 32px 20px 60px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+      textarea {
+        width: 100%;
+        min-height: 240px;
+        resize: vertical;
+        background: #0f172a;
+        color: var(--text);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 14px;
+        line-height: 1.5;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+      }
+      select, button {
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 9px 12px;
+        font-size: 14px;
+      }
+      select {
+        background: var(--panel-alt);
+        color: var(--text);
+      }
+      button {
+        background: var(--accent);
+        color: #06131d;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: transparent;
+        color: var(--text);
+      }
+      button.danger { background: var(--danger); color: white; }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .ok { background: var(--success); }
+      .warn { background: var(--danger); }
+      pre {
+        width: 100%;
+        min-height: 180px;
+        max-height: 340px;
+        overflow: auto;
+        background: #081018;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        padding: 14px;
+        white-space: pre-wrap;
+      }
+      .metrics {
+        display: none;
+      }
+      .metrics.visible { display: block; }
+      .json-box {
+        width: 100%;
+        min-height: 180px;
+        font-family: ui-monospace, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <h1>LiCode web C/C++ spike</h1>
+      <div class="panel">
+        <div class="status">
+          <span id="iso-dot" class="dot warn"></span>
+          <span id="iso-status">crossOriginIsolated = false</span>
+        </div>
+        <div style="margin-top:12px; color: var(--muted);" id="runtime-info"></div>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar">
+          <select id="lang">
+            <option value="c">C</option>
+            <option value="cpp">C++</option>
+          </select>
+          <button id="run-btn">Compilar + Rodar</button>
+          <button class="secondary" id="load-sample">Carregar amostra</button>
+          <button class="danger" id="stop-btn">Stop</button>
+          <button class="secondary" id="report-btn">Gerar relatório</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <textarea id="source" spellcheck="false"></textarea>
+      </div>
+
+      <div class="panel">
+        <pre id="output">Aguardando execução...</pre>
+      </div>
+
+      <div class="panel metrics" id="metrics-panel">
+        <h3>Relatório JSON</h3>
+        <textarea id="report-output" class="json-box"></textarea>
+        <div class="toolbar" style="margin-top:12px;">
+          <button id="copy-btn">Copiar</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

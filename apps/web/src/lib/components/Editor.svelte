@@ -62,9 +62,11 @@
   }
 
   function getLangColor(name: string) {
+    if (name.endsWith('.ts')) return '#3178c6';
     if (name.endsWith('.js')) return '#f7df1e';
     if (name.endsWith('.py')) return '#38bdf8';
     if (name.endsWith('.rb')) return '#f43f5e';
+    if (name.endsWith('.c')) return '#a8b9cc';
     return '#a1a1aa';
   }
 </script>

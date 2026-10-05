@@ -54,6 +54,18 @@ export const LANGUAGES: LanguageProfile[] = [
     ]
   },
   {
+    id: 'typescript',
+    label: 'TypeScript',
+    runtimeLabel: 'Runtime TypeScript',
+    entryFile: 'index.ts',
+    runtimeReady: true,
+    examples: [
+      { id: 'hello', label: '1. console.log("oi")', code: 'const message: string = "oi";\nconsole.log(message);' },
+      { id: 'types', label: '2. Tipos', code: 'type User = { name: string; age: number };\nconst user: User = { name: "Ada", age: 36 };\nconsole.log(`${user.name}: ${user.age}`);' },
+      { id: 'syntax-error', label: '3. Erro de sintaxe', code: 'const greeting: string = ;\nconsole.log(greeting);' }
+    ]
+  },
+  {
     id: 'python',
     label: 'Python',
     runtimeLabel: 'Runtime Python',
@@ -129,6 +141,18 @@ export const LANGUAGES: LanguageProfile[] = [
         label: '6. Stop Interrompe',
         code: 'puts "Iniciando loop. Clique em Stop para matar imediatamente!"\ncount = 0\nloop do\n  count += 1\n  puts "Tick #{count}"\n  sleep 0.1\nend'
       }
+    ]
+  },
+  {
+    id: 'c',
+    label: 'C',
+    runtimeLabel: 'Runtime C / WASI',
+    entryFile: 'main.c',
+    runtimeReady: true,
+    examples: [
+      { id: 'hello', label: '1. Hello, world!', code: '#include <stdio.h>\n\nint main(void) {\n  printf("hello from C\\n");\n  return 0;\n}' },
+      { id: 'loop', label: '2. Loop e saída', code: '#include <stdio.h>\n\nint main(void) {\n  for (int i = 1; i <= 5; i++) {\n    printf("valor: %d\\n", i);\n  }\n  return 0;\n}' },
+      { id: 'syntax-error', label: '3. Erro de sintaxe', code: '#include <stdio.h>\nint main(void) {\n  printf("sem ponto e vírgula")\n  return 0;\n}' }
     ]
   }
 ];
