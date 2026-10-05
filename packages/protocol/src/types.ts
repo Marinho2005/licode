@@ -1,3 +1,6 @@
+export type Language = 'js' | 'typescript' | 'python' | 'ruby';
+export type WorkerLanguage = Language | 'c';
+
 export type ExecPhase = 'compiling' | 'running';
 
 export type ExitReason = 'timeout' | 'killed' | 'error' | 'output-limit';
@@ -26,6 +29,7 @@ export type HostToSandboxMessage =
       id: string;
       version: string;
       type: 'exec';
+      language: Language;
       files: Record<string, string>;
       entry: string;
       limits: {
@@ -44,6 +48,12 @@ export type HostToSandboxMessage =
       version: string;
       type: 'signal';
       sig: SignalType;
+    }
+  | {
+      id: string;
+      version: string;
+      type: 'install';
+      language: Language;
     };
 
 // Mensagens enviadas pelo Sandbox para a UI através do MessagePort
@@ -53,11 +63,32 @@ export type SandboxToHostMessage =
       version: string;
       type: 'event';
       event: ExecEvent;
+    }
+  | {
+      id: string;
+      version: string;
+      type: 'install-progress';
+      loaded: number;
+      total: number;
+    }
+  | {
+      id: string;
+      version: string;
+      type: 'install-done';
+      totalBytes: number;
+      cached: boolean;
+    }
+  | {
+      id: string;
+      version: string;
+      type: 'install-error';
+      message: string;
     };
 
 // Mensagens internas entre o Sandbox Host e o Web Worker descartável
 export type WorkerInitMessage = {
   id: string;
+  language: WorkerLanguage;
   files: Record<string, string>;
   entry: string;
 };

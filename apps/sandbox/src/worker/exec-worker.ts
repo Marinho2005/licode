@@ -73,12 +73,10 @@ self.addEventListener('unhandledrejection', (ev: PromiseRejectionEvent) => {
 self.addEventListener('message', async (ev: MessageEvent<WorkerInitMessage>) => {
   const { files, entry } = ev.data;
 
-  // Notifica o host que o worker iniciou execução
-  self.postMessage({ type: 'phase', phase: 'running' } satisfies WorkerToHostMessage);
-
   const code = files[entry] || '';
 
   try {
+    self.postMessage({ type: 'phase', phase: 'running' } satisfies WorkerToHostMessage);
     // Executa o código em escopo estrito
     // Function construtor executa no escopo global do Worker
     const executor = new Function(

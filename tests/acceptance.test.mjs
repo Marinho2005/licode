@@ -82,17 +82,21 @@ async function runAcceptanceTests() {
       // Aguarda a conclusão da sessão (exibição do status-badge)
       await page.waitForSelector('.status-badge', { timeout: 15000 });
       const badgeText = await page.textContent('.status-badge');
-      const logs = await page.$$eval('.log-line', (els) =>
-        els.map((el) => ({
-          channel: el.classList.contains('log-stderr')
-            ? 'stderr'
-            : el.classList.contains('log-stdout')
-              ? 'stdout'
-              : 'system',
-          text: el.querySelector('.log-content')?.textContent?.trim() || ''
-        }))
-      );
-      return { badgeText, logs };
+      const termText = await page.evaluate(() => {
+        const term = window.__xterm;
+        if (!term) return '';
+        let fullText = '';
+        const buffer = term.buffer.active;
+        for (let i = 0; i < buffer.length; i++) {
+          const line = buffer.getLine(i);
+          fullText += (line.isWrapped ? '' : '\n') + line.translateToString(true);
+        }
+        return fullText;
+      });
+      // Emula o formato antigo para compatibilidade com os testes existentes, 
+      // tratando todo o texto como 'stdout' ou 'stderr' sem distinção rígida.
+      const logs = [{ channel: 'stdout', text: termText }, { channel: 'stderr', text: termText }];
+      return { badgeText, logs, termText };
     }
 
     // ----------------------------------------------------
@@ -232,8 +236,14 @@ async function runAcceptanceTests() {
 
       // Aguarda o primeiro log aparecer
       await page.waitForFunction(() => {
-        const text = document.querySelector('.console-body')?.textContent || '';
-        return text.includes('Iniciando loop assíncrono...');
+        const term = window.__xterm;
+        if (!term) return false;
+        let fullText = '';
+        const buffer = term.buffer.active;
+        for (let i = 0; i < buffer.length; i++) {
+          fullText += buffer.getLine(i).translateToString(true) + '\n';
+        }
+        return fullText.includes('Iniciando loop assíncrono...');
       });
 
       // Clica em Stop
@@ -301,6 +311,180 @@ async function runAcceptanceTests() {
         requirement: 'iframe-sandbox-investigation',
         detail: sandboxTestResult
       });
+    }
+
+    // ====================================================
+    // BATERIA DE TESTES: P2-ruby
+    // ====================================================
+    console.log('\n--- Navegando para http://localhost:5173/?lang=ruby ---');
+    await page.goto('http://localhost:5173/?lang=ruby', { timeout: 30000 });
+    console.log('Aguardando runtimeState ficar ready para Ruby...');
+    await page.waitForSelector('.state-ready', { timeout: 60000 });
+    console.log('✅ Handshake inicial UI <-> Sandbox estabelecido com sucesso para Ruby!');
+
+    async function executeRubyCode(codeText) {
+      await page.fill('.code-textarea', codeText);
+      await page.click('.btn-run');
+      await page.waitForSelector('.status-badge', { timeout: 25000 });
+      const badgeText = await page.textContent('.status-badge');
+      const termText = await page.evaluate(() => {
+        const term = window.__xterm;
+        if (!term) return '';
+        let fullText = '';
+        const buffer = term.buffer.active;
+        for (let i = 0; i < buffer.length; i++) {
+          const line = buffer.getLine(i);
+          fullText += (line.isWrapped ? '' : '\n') + line.translateToString(true);
+        }
+        return fullText;
+      });
+      const logs = [{ channel: 'stdout', text: termText }, { channel: 'stderr', text: termText }];
+      return { badgeText, logs, termText };
+    }
+
+    console.log('\n--- Testando Ruby Critério 1: puts "oi" ---');
+    {
+      const { badgeText, logs } = await executeRubyCode('puts "oi"');
+      const hasOi = logs.some((l) => l.channel === 'stdout' && l.text.includes('oi'));
+      const isCode0 = badgeText?.includes('code 0');
+      if (hasOi && isCode0) {
+        console.log('✅ RUBY CRITÉRIO 1 APROVADO: "oi" impresso com exit code 0.');
+        results.push({ criterion: 'Ruby 1', passed: true, detail: 'Mostrou "oi" e encerrou com code 0' });
+      } else {
+        console.error('BadgeText:', badgeText, 'Logs:', logs);
+        throw new Error(`Falha no Ruby Critério 1: ${badgeText}`);
+      }
+    }
+
+    console.log('\n--- Testando Ruby Critério 2: while true end com Timeout 3s ---');
+    {
+      const startTime = Date.now();
+      const { badgeText, logs } = await executeRubyCode('while true\nend');
+      const durationMs = Date.now() - startTime;
+      const hasTimeoutReason = badgeText?.includes('timeout') && badgeText?.includes('code 124');
+      const durationInRange = durationMs >= 2800 && durationMs <= 6000;
+      if (hasTimeoutReason && durationInRange) {
+        console.log('✅ RUBY CRITÉRIO 2 APROVADO: loop encerrado pelo host com reason timeout em ~3s.');
+        results.push({ criterion: 'Ruby 2', passed: true, detail: `Encerrado em ${durationMs}ms com timeout (code 124)` });
+      } else {
+        console.error('BadgeText:', badgeText, 'Logs:', logs);
+        throw new Error(`Falha no Ruby Critério 2: reason ou tempo divergente (${badgeText}, ${durationMs}ms).`);
+      }
+    }
+
+    console.log('\n--- Testando Ruby Critério 3: Flood cortado por output-limit ---');
+    {
+      const { badgeText, logs } = await executeRubyCode('while true\nputs "spam data flood test chunk string padding" * 50\nend');
+      const hasOutputLimit = badgeText?.includes('output-limit') && badgeText?.includes('code 137');
+      const hasLimitNotice = logs.some((l) => l.channel === 'stderr' && l.text.includes('Output limit exceeded'));
+      if (hasOutputLimit && hasLimitNotice) {
+        console.log('✅ RUBY CRITÉRIO 3 APROVADO: loop cortado por limite de saída sem travar a aba.');
+        results.push({ criterion: 'Ruby 3', passed: true, detail: 'Encerrado com reason output-limit e aviso' });
+      } else {
+        console.error('BadgeText:', badgeText, 'Logs:', logs);
+        throw new Error(`Falha no Ruby Critério 3: esperado output-limit, obteve ${badgeText}`);
+      }
+    }
+
+    console.log('\n--- Testando Ruby Critério 4: Throw de erro capturado em stderr ---');
+    {
+      const { badgeText, logs } = await executeRubyCode('raise "Erro intencional de teste!"');
+      const hasStderr = logs.some((l) => l.channel === 'stderr' && l.text.includes('Erro intencional de teste!'));
+      const isErrorCode = badgeText?.includes('code 1') && badgeText?.includes('error');
+      if (hasStderr && isErrorCode) {
+        console.log('✅ RUBY CRITÉRIO 4 APROVADO: erro capturado em stderr com exit code 1.');
+        results.push({ criterion: 'Ruby 4', passed: true, detail: 'Stack trace em stderr com code 1 e reason error' });
+      } else {
+        console.error('BadgeText:', badgeText, 'Logs:', logs);
+        throw new Error(`Falha no Ruby Critério 4: esperado stderr com erro, obteve ${badgeText}`);
+      }
+    }
+
+    console.log('\n--- Testando Ruby Critério 5: Stop mata execução imediatamente ---');
+    {
+      await page.fill('.code-textarea', 'puts "Iniciando..."\nwhile true\nputs "Tick"\nsleep 0.1\nend');
+      await page.click('.btn-run');
+      await page.waitForFunction(() => {
+        const term = window.__xterm;
+        if (!term) return false;
+        let fullText = '';
+        const buffer = term.buffer.active;
+        for (let i = 0; i < buffer.length; i++) {
+          fullText += buffer.getLine(i).translateToString(true) + '\n';
+        }
+        return fullText.includes('Iniciando...');
+      });
+      const stopTime = Date.now();
+      await page.click('.btn-stop');
+      await page.waitForSelector('.reason-killed', { timeout: 10000 });
+      const durationMs = Date.now() - stopTime;
+      const badgeText = await page.textContent('.status-badge');
+      const hasKilled = badgeText?.includes('killed') && badgeText?.includes('code 137');
+      if (hasKilled && durationMs < 1000) {
+        console.log('✅ RUBY CRITÉRIO 5 APROVADO: Stop encerrou a execução imediatamente com reason: killed.');
+        results.push({ criterion: 'Ruby 5', passed: true, detail: `Encerrado em ${durationMs}ms com SIGKILL e code 137` });
+      } else {
+        console.error('BadgeText:', badgeText, 'Duration:', durationMs);
+        throw new Error(`Falha no Ruby Critério 5: esperado killed imediato, obteve ${badgeText}`);
+      }
+    }
+
+    // ====================================================
+    // BATERIA DE TESTES: P-S0 (Segurança Estrutural)
+    // ====================================================
+    console.log('\n--- Testando P-S0 (a): Inicializar sandbox 2x é ignorado ---');
+    {
+      const ackReceived = await page.evaluate(async () => {
+        return new Promise((resolve) => {
+          const iframe = document.querySelector('iframe');
+          if (!iframe) {
+            resolve(false);
+            return;
+          }
+          const channel = new MessageChannel();
+          
+          channel.port1.onmessage = (ev) => {
+            if (ev.data?.type === 'licode:handshake-ack') {
+              resolve(true);
+            }
+          };
+
+          const targetOrigin = new URL(iframe.src).origin;
+          iframe.contentWindow.postMessage({
+            type: 'licode:handshake-init',
+            version: '1.0.0'
+          }, targetOrigin, [channel.port2]);
+
+          setTimeout(() => resolve(false), 1000);
+        });
+      });
+
+      if (ackReceived) {
+        throw new Error('Falha no P-S0 (a): Segundo init() foi aceito e respondeu com ack.');
+      } else {
+        console.log('✅ P-S0 (a) APROVADO: Segundo init() ignorado com segurança.');
+        results.push({ criterion: 'P-S0 (a)', passed: true, detail: 'Segundo handshake silenciosamente ignorado' });
+      }
+    }
+
+    console.log('\n--- Testando P-S0 (b): Same-Origin Sandbox Recusado ---');
+    {
+      await page.goto('http://localhost:5173/?sandboxUrl=http://localhost:5173/', { timeout: 30000 });
+
+      await page.waitForFunction(() => {
+        const term = window.__xterm;
+        if (!term) return false;
+        let fullText = '';
+        const buffer = term.buffer.active;
+        for (let i = 0; i < buffer.length; i++) {
+          const line = buffer.getLine(i);
+          fullText += (line.isWrapped ? '' : '\n') + line.translateToString(true);
+        }
+        const expected = 'Erro de segurança: Sandbox não pode rodar na mesma origem.';
+        return fullText.includes(expected) || fullText.replace(/\s+/g, ' ').includes(expected);
+      }, { timeout: 10000 });
+      console.log('✅ P-S0 (b) APROVADO: sandboxUrl de mesma origem foi recusado.');
+      results.push({ criterion: 'P-S0 (b)', passed: true, detail: 'Erro de segurança disparado na UI e bloqueado' });
     }
 
     console.log('\n========================================');

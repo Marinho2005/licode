@@ -1,20 +1,30 @@
 <script lang="ts">
+  import type { CodePreset } from '$lib/languages.js';
+
   let {
     presets,
     onSelect
   }: {
-    presets: Record<string, { label: string; code: string }>;
+    presets: CodePreset[] | Record<string, { label: string; code: string }>;
     onSelect: (key: string) => void;
   } = $props();
 </script>
 
 <div class="presets-bar">
   <span class="presets-label">Exemplos Rápidos:</span>
-  {#each Object.entries(presets) as [key, item]}
-    <button class="preset-btn" onclick={() => onSelect(key)}>
-      {item.label}
-    </button>
-  {/each}
+  {#if Array.isArray(presets)}
+    {#each presets as item}
+      <button class="preset-btn" onclick={() => onSelect(item.id)}>
+        {item.label}
+      </button>
+    {/each}
+  {:else}
+    {#each Object.entries(presets) as [key, item]}
+      <button class="preset-btn" onclick={() => onSelect(key)}>
+        {item.label}
+      </button>
+    {/each}
+  {/if}
 </div>
 
 <style>

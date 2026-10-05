@@ -1,4 +1,10 @@
-import type { HandshakeAckMessage, HandshakeInitMessage } from '@licode/protocol';
+import type {
+  HandshakeAckMessage,
+  HandshakeInitMessage,
+  HostToSandboxMessage,
+  Language,
+  SandboxToHostMessage
+} from '@licode/protocol';
 import { PROTOCOL_VERSION } from '@licode/protocol';
 import type { ISandboxBridge } from '@licode/runtime-js';
 
@@ -75,7 +81,7 @@ export class SandboxBridge implements ISandboxBridge {
             type: 'licode:handshake-init',
             version: PROTOCOL_VERSION
           };
-          this.iframe.contentWindow.postMessage(initMsg, '*', [channel.port2]);
+          this.iframe.contentWindow.postMessage(initMsg, this.sandboxOrigin, [channel.port2]);
         } catch (err) {
           console.error('[LiCode Web Host] Erro ao enviar postMessage com port2:', err);
         }
@@ -83,6 +89,7 @@ export class SandboxBridge implements ISandboxBridge {
 
       const onWindowMessage = (ev: MessageEvent) => {
         if (isResolved) return;
+        if (ev.origin !== this.sandboxOrigin) return;
         console.log('[LiCode Web Host] Recebeu window message do parent/iframe:', ev.data);
         if (ev.data && ev.data.type === 'licode:sandbox-ready') {
           sendNewPort();
@@ -113,4 +120,57 @@ export class SandboxBridge implements ISandboxBridge {
     }
     return this.port;
   }
+
+  public async install(
+    language: Language,
+    onProgress?: (loaded: number, total: number) => void
+  ): Promise<{ totalBytes: number; cached: boolean }> {
+    await this.ensureReady();
+    const port = this.getPort();
+    const id = `install-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    return new Promise<{ totalBytes: number; cached: boolean }>((resolve, reject) => {
+      const timeoutMs = 60000;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        port.removeEventListener('message', onMessage);
+      };
+
+      const onMessage = (ev: MessageEvent<SandboxToHostMessage>) => {
+        const msg = ev.data;
+        if (!msg || msg.id !== id) return;
+
+        if (msg.type === 'install-progress') {
+          onProgress?.(msg.loaded, msg.total);
+        } else if (msg.type === 'install-done') {
+          cleanup();
+          resolve({ totalBytes: msg.totalBytes, cached: msg.cached });
+        } else if (msg.type === 'install-error') {
+          cleanup();
+          reject(new Error(msg.message));
+        }
+      };
+
+      timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Timeout de instalação de assets para '${language}' (${timeoutMs}ms).`));
+      }, timeoutMs);
+
+      port.addEventListener('message', onMessage);
+
+      const installMsg: HostToSandboxMessage = {
+        id,
+        version: PROTOCOL_VERSION,
+        type: 'install',
+        language
+      };
+      port.postMessage(installMsg);
+    });
+  }
 }
+

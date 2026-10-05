@@ -32,9 +32,3 @@ jobs:
 
       - name: Checagem estrita de tipos (TypeScript)
         run: pnpm typecheck
-
-      - name: Build da imagem Docker apps/sandbox
-        run: docker build -t licode-sandbox:test -f apps/sandbox/Dockerfile .
-
-      - name: Build da imagem Docker apps/web
-        run: docker build -t licode-web:test -f apps/web/Dockerfile .

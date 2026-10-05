@@ -11,7 +11,12 @@
   "dependencies": {
     "@licode/protocol": "workspace:*",
     "@licode/runtime-core": "workspace:*",
-    "@licode/runtime-js": "workspace:*"
+    "@licode/runtime-js": "workspace:*",
+    "@licode/runtime-python": "workspace:*",
+    "@licode/runtime-ruby": "workspace:*",
+    "@wasmer/sdk": "0.19.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.8",

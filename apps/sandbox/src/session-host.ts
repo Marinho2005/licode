@@ -1,5 +1,6 @@
 import type {
   ExecEvent,
+  Language,
   SandboxToHostMessage,
   WorkerInitMessage,
   WorkerToHostMessage,
@@ -30,6 +31,7 @@ export class SandboxSessionHost {
     private readonly port: MessagePort,
     public readonly sessionId: string,
     private readonly spec: {
+      language: Language;
       files: Record<string, string>;
       entry: string;
       limits: { wallMs: number; maxOutputBytes?: number };
@@ -56,11 +58,27 @@ export class SandboxSessionHost {
     // 1. Emite fase compiling
     this.sendEvent({ t: 'phase', phase: 'compiling' });
 
-    // 2. Instancia worker novo e descartável
+    // 2. Instancia worker novo e descartável conforme a linguagem
     try {
-      this.worker = new Worker(new URL('./worker/exec-worker.ts', import.meta.url), {
-        type: 'module'
-      });
+      if (this.spec.language === 'python') {
+        this.worker = new Worker(new URL('./worker/python-worker.ts', import.meta.url), {
+          type: 'module'
+        });
+      } else if (this.spec.language === 'ruby') {
+        this.worker = new Worker(new URL('./worker/ruby-worker.ts', import.meta.url), {
+          type: 'module'
+        });
+      } else {
+        if (this.spec.language === 'typescript') {
+          this.worker = new Worker(new URL('./worker/typescript-worker.ts', import.meta.url), {
+            type: 'module'
+          });
+        } else {
+          this.worker = new Worker(new URL('./worker/exec-worker.ts', import.meta.url), {
+            type: 'module'
+          });
+        }
+      }
     } catch (err: unknown) {
       this.sendEvent({
         t: 'stderr',
@@ -70,11 +88,12 @@ export class SandboxSessionHost {
       return;
     }
 
-    // 3. Configura timer de timeout NA THREAD DO HOST
+    // Python precisa inicializar o interpretador Wasm antes de executar o código.
+    // O watchdog de inicialização é separado do limite do programa do usuário.
     const wallMs = this.spec.limits.wallMs || DEFAULT_WALL_LIMIT_MS;
     this.timeoutTimer = setTimeout(() => {
       this.handleTimeout();
-    }, wallMs);
+    }, this.spec.language === 'python' ? 60_000 : wallMs);
 
     // 4. Inicia loop de batch de logs
     this.scheduleBatchFlush();
@@ -85,6 +104,10 @@ export class SandboxSessionHost {
       const msg = ev.data;
 
       if (msg.type === 'phase') {
+        if (msg.phase === 'running' && this.spec.language === 'python') {
+          if (this.timeoutTimer) clearTimeout(this.timeoutTimer);
+          this.timeoutTimer = setTimeout(() => this.handleTimeout(), wallMs);
+        }
         this.sendEvent({ t: 'phase', phase: msg.phase });
       } else if (msg.type === 'output') {
         this.queueOutput(msg.channel, msg.data);
@@ -110,6 +133,7 @@ export class SandboxSessionHost {
     // 6. Envia payload de execução para o worker
     const initMsg: WorkerInitMessage = {
       id: this.sessionId,
+      language: this.spec.language,
       files: this.spec.files,
       entry: this.spec.entry
     };

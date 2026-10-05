@@ -4,6 +4,7 @@ import type {
   SandboxToHostMessage,
   SignalType
 } from '@licode/protocol';
+import type { Language } from '@licode/protocol';
 import { PROTOCOL_VERSION } from '@licode/protocol';
 import { AsyncQueue, type ExecutionSession } from '@licode/runtime-core';
 
@@ -16,7 +17,7 @@ export class JSExecutionSession implements ExecutionSession {
   constructor(
     private readonly port: MessagePort,
     private readonly sessionId: string,
-    spec: { files: Record<string, string>; entry: string; limits: { wallMs: number } }
+    spec: { files: Record<string, string>; entry: string; limits: { wallMs: number }; language?: Language }
   ) {
     this.events = new AsyncQueue<ExecEvent>();
     this.done = new Promise<{ code: number }>((resolve) => {
@@ -47,6 +48,7 @@ export class JSExecutionSession implements ExecutionSession {
       id: this.sessionId,
       version: PROTOCOL_VERSION,
       type: 'exec',
+      language: spec.language ?? 'js',
       files: spec.files,
       entry: spec.entry,
       limits: {
