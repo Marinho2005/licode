@@ -24,6 +24,7 @@ const isolationHeaderPlugin = {
 
 export default defineConfig({
   plugins: [sveltekit(), isolationHeaderPlugin],
+  envPrefix: ['VITE_', 'PUBLIC_'],
   optimizeDeps: {
     exclude: ['@wasmer/sdk']
   },

@@ -58,6 +58,14 @@
     }
 
     if (channel === 'stderr' || channel === 'system') {
+      if (batchBuffer) {
+        term.write(batchBuffer);
+        batchBuffer = '';
+        if (batchTimer) {
+          cancelAnimationFrame(batchTimer);
+          batchTimer = null;
+        }
+      }
       term.write(sequence);
     } else {
       batchBuffer += sequence;
