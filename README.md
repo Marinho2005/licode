@@ -40,3 +40,46 @@ pnpm test
 ## Segurança e limites
 
 O código roda em uma origem separada da interface, em workers descartáveis. Um watchdog externo ao worker interrompe programas que excedem o limite de execução; a saída também tem limite para evitar travar a aba. Entrada interativa por stdin ainda não é suportada.
+
+## Deploy em Produção (Vercel / Cloudflare Pages)
+
+O LiCode opera com duas origens separadas por razões de segurança e isolamento de execução:
+1. **Interface Web (`licode-web`)**: [https://licode-web.vercel.app](https://licode-web.vercel.app)
+2. **Sandbox Isolado (`licode-sandbox`)**: [https://licode-sandbox.vercel.app](https://licode-sandbox.vercel.app)
+
+### Variáveis de Build (Build-Time)
+- **Web (`apps/web`)**: `PUBLIC_SANDBOX_URL` aponta para a URL do sandbox (`https://licode-sandbox.vercel.app`).
+- **Sandbox (`apps/sandbox`)**: `VITE_ALLOWED_PARENT_ORIGINS` define a lista de origens pai autorizadas (`https://licode-web.vercel.app`). Em produção, se omitida, o sandbox opera em falha fechada (rejeita handshakes).
+
+### Headers de Segurança e Isolamento
+- **Web** (`apps/web/static/_headers` e `apps/web/static/vercel.json`):
+  - `Cross-Origin-Opener-Policy: same-origin`
+  - `Cross-Origin-Embedder-Policy: require-corp`
+  - `X-Content-Type-Options: nosniff`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+- **Sandbox** (`apps/sandbox/public/_headers` e `apps/sandbox/public/vercel.json`):
+  - `Content-Security-Policy: frame-ancestors https://licode-web.vercel.app` (bloqueia qualquer tentativa de embed por terceiros)
+  - `Cross-Origin-Opener-Policy: same-origin`
+  - `Cross-Origin-Embedder-Policy: require-corp`
+  - `Cross-Origin-Resource-Policy: cross-origin`
+  - `X-Content-Type-Options: nosniff`
+  - `Referrer-Policy: no-referrer`
+  - `Cache-Control: public, max-age=31536000, immutable` para `/assets/*` versionados (WASM do Pyodide e Ruby).
+
+### Comandos de Deploy (Vercel CLI)
+```bash
+# 1. Build do Sandbox
+VITE_ALLOWED_PARENT_ORIGINS="https://licode-web.vercel.app" pnpm --filter @licode/sandbox build
+
+# 2. Deploy do Sandbox na Vercel
+vercel deploy apps/sandbox/dist --prod --yes --name licode-sandbox
+
+# 3. Build da Aplicação Web
+PUBLIC_SANDBOX_URL="https://licode-sandbox.vercel.app" pnpm --filter @licode/web build
+
+# 4. Deploy da Web na Vercel
+vercel deploy apps/web/build --prod --yes --name licode-web
+```
+
+> **Nota:** Para Cloudflare Pages, a estrutura de pastas e os arquivos `_headers` gerados nas pastas de saída são 100% compatíveis, utilizando `wrangler pages deploy apps/sandbox/dist --project-name=licode-sandbox` e `wrangler pages deploy apps/web/build --project-name=licode-web`.
+

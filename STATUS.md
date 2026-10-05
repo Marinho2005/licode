@@ -51,19 +51,31 @@ Arquitetura de desenvolvimento: Engenharia integrada ponta a ponta (Full-Cycle),
   - Instância exposta para instrumentação de testes E2E (`window.__xterm`).
   - Suíte de testes de aceitação adaptada para inspecionar diretamente o buffer do terminal.
 
+### S6: Deploy em Produção com Isolamento Estrito de Origem
+- **Status:** ✅ Concluído e Validado
+- **Principais Entregas:**
+  - Deploy de duas origens independentes na Vercel:
+    - Web: `https://licode-web.vercel.app`
+    - Sandbox: `https://licode-sandbox.vercel.app`
+  - Injeção das URLs em tempo de build (`PUBLIC_SANDBOX_URL` e `VITE_ALLOWED_PARENT_ORIGINS`).
+  - Falha fechada: sandbox sem configuração recusa handshakes.
+  - CSP com `frame-ancestors https://licode-web.vercel.app` ativo no sandbox; bloqueio comprovado contra embed de terceiros via Playwright.
+  - Isolamento com headers COOP (`same-origin`), COEP (`require-corp`) e CORP (`cross-origin`).
+  - Arquivos `_headers` e `vercel.json` integrados às pastas de saída (`apps/web/build` e `apps/sandbox/dist`).
+  - Cache imutável (`Cache-Control: public, max-age=31536000, immutable`) para assets WASM (`ruby+stdlib.wasm` 30 MB e `pyodide.asm.wasm` 9.6 MB).
+  - Servindo `.wasm` com MIME type nativo `application/wasm`.
+  - Redesign da interface sincronizado com layout do protótipo visual.
+
 ---
 
 ## 📋 Próximos Marcos (Roadmap)
 
 ### S4: Editor de Código Avançado
-- Substituição do `textarea` simples por editor baseado em Monaco Editor ou CodeMirror 6.
-- Syntax highlighting dinâmico por linguagem (JS, Python, Ruby).
+- Substituição do editor simples por editor baseado em Monaco Editor ou CodeMirror 6.
+- Syntax highlighting dinâmico por linguagem (JS, Python, Ruby, C, TypeScript).
 - Atalhos de teclado comuns (Ctrl+Enter para executar, indentação inteligente).
 
 ### S5: Suporte a Entrada Interativa (Stdin)
 - Suporte a `input()` / `gets` / `readline` sem travar a thread do navegador.
 - Abordagem via buffer inicial de entrada ou canal síncrono interativo com `SharedArrayBuffer` + `Atomics.wait`.
 
-### S6: Otimização de Cache e Suporte Offline (PWA / Cache API)
-- Pré-carregamento e armazenamento em cache offline de artefatos WASM pesados (Pyodide e Ruby).
-- Indicador visual na UI de progresso de download e status do cache local.
