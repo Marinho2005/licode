@@ -20,41 +20,51 @@
     onRun?: () => void;
     onStop?: () => void;
   } = $props();
+
+  const stateText = $derived(
+    runtimeState === 'ready'
+      ? 'PRONTO'
+      : runtimeState === 'installing'
+      ? 'INSTALANDO'
+      : runtimeState === 'warming'
+      ? 'PREPARANDO'
+      : runtimeState === 'error'
+      ? 'ERRO'
+      : runtimeState.toUpperCase()
+  );
 </script>
 
 <header class="header">
   <!-- Brand / Logo Area -->
   <div class="logo-area">
-    <div class="logo-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-        <polygon points="12 2 2 7 12 12 22 7 12 2" />
-        <polyline points="2 17 12 22 22 17" />
-        <polyline points="2 12 12 17 22 12" />
-      </svg>
+    <div class="logo-box">
+      <span class="logo-letter">L</span>
     </div>
     <div class="logo-text-group">
-      <span class="logo-title">LiCode<span class="dot">.dev</span></span>
-      <span class="badge">In-Browser IDE</span>
+      <span class="logo-title">LiCode<span class="logo-domain">.dev</span></span>
+      <span class="logo-sep">|</span>
+      <span class="logo-subtitle">IDE no navegador</span>
     </div>
   </div>
 
-  <!-- Center: Action Controls (Replit Style) -->
+  <!-- Center: Action Controls (Run & Stop buttons) -->
   <div class="action-controls">
     <button
       type="button"
       class="btn btn-run"
       disabled={isRunDisabled}
       onclick={onRun}
-      title="Executar código (Ctrl+Enter)"
+      title="Executar código (⌘↵ / Ctrl+Enter)"
     >
       {#if execPhase === 'compiling' || execPhase === 'running'}
         <span class="btn-spinner"></span>
         <span>Executando...</span>
       {:else}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <polygon points="5 3 19 12 5 21 5 3" />
+        <svg class="run-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="6 3 20 12 6 21 6 3" />
         </svg>
-        <span>Run</span>
+        <span class="btn-label">Run</span>
+        <span class="shortcut-tag">⌘↵</span>
       {/if}
     </button>
 
@@ -65,7 +75,7 @@
       onclick={onStop}
       title="Interromper execução (SIGKILL)"
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
         <rect x="4" y="4" width="16" height="16" rx="2" />
       </svg>
       <span>Stop</span>
@@ -78,13 +88,16 @@
     {/if}
   </div>
 
-  <!-- Right: Status Bar Area (Required by E2E tests: .status-bar and .state-ready) -->
+  <!-- Right: Status Bar Area (Preserves test assertions for .status-bar and .state-ready) -->
   <div class="status-bar">
-    <span class="status-item">
-      {runtimeLabel}: <strong class="state-{runtimeState}">{runtimeState}</strong>
+    <span class="status-item runtime-indicator">
+      <span class="runtime-name">{runtimeLabel}:</span>
+      <strong class="runtime-val state-{runtimeState}">{stateText}</strong>
     </span>
-    <span class="status-item">
-      Fase: <strong class="phase-{execPhase}">{execPhase}</strong>
+
+    <span class="status-item sandbox-indicator">
+      <span class="dot-green">●</span>
+      <span class="sandbox-name">Sandbox pronto</span>
     </span>
   </div>
 </header>
@@ -94,10 +107,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 44px;
+    height: 48px;
     padding: 0 16px;
-    background: #18181b;
-    border-bottom: 1px solid #27272a;
+    background: #0f1217;
+    border-bottom: 1px solid #1c2128;
     user-select: none;
     flex-shrink: 0;
     gap: 16px;
@@ -110,42 +123,54 @@
     gap: 10px;
   }
 
-  .logo-icon {
+  .logo-box {
     width: 26px;
     height: 26px;
-    background: linear-gradient(135deg, #0284c7, #38bdf8);
+    background: #1c1811;
+    border: 1px solid #b47818;
     border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  .logo-letter {
+    color: #e5a93c;
+    font-weight: 800;
+    font-size: 15px;
+    line-height: 1;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .logo-text-group {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
   }
 
   .logo-title {
-    font-size: 1.05rem;
+    font-size: 0.98rem;
     font-weight: 700;
-    color: #f4f4f5;
-    letter-spacing: -0.02em;
+    color: #ffffff;
+    letter-spacing: -0.01em;
   }
 
-  .dot {
-    color: #10b981;
+  .logo-domain {
+    color: #8b949e;
+    font-weight: 400;
   }
 
-  .badge {
-    font-size: 0.68rem;
-    padding: 1px 6px;
-    background: #27272a;
-    border: 1px solid #3f3f46;
-    border-radius: 10px;
-    color: #a1a1aa;
-    font-weight: 500;
+  .logo-sep {
+    color: #30363d;
+    font-size: 0.8rem;
+    font-weight: 300;
+  }
+
+  .logo-subtitle {
+    font-size: 0.82rem;
+    color: #8b949e;
+    font-weight: 400;
   }
 
   .action-controls {
@@ -160,7 +185,7 @@
     gap: 6px;
     border: none;
     border-radius: 6px;
-    padding: 5px 14px;
+    padding: 6px 14px;
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
@@ -168,34 +193,55 @@
   }
 
   .btn:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
   }
 
   .btn-run {
-    background: #10b981;
-    color: #ffffff;
-    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2);
+    background: #e5a93c;
+    color: #0d0f12;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
   .btn-run:hover:not(:disabled) {
-    background: #059669;
+    background: #f0b54e;
+  }
+
+  .run-icon {
+    flex-shrink: 0;
+  }
+
+  .btn-label {
+    font-weight: 700;
+  }
+
+  .shortcut-tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #382c16;
+    background: rgba(0, 0, 0, 0.12);
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 2px;
   }
 
   .btn-stop {
-    background: #ef4444;
-    color: #ffffff;
+    background: #1c2128;
+    color: #8b949e;
+    border: 1px solid #30363d;
   }
 
   .btn-stop:hover:not(:disabled) {
-    background: #dc2626;
+    background: #252b36;
+    color: #f85149;
+    border-color: #f8514944;
   }
 
   .btn-spinner {
     width: 12px;
     height: 12px;
-    border: 2px solid #ffffff44;
-    border-top-color: #ffffff;
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    border-top-color: #0d0f12;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -205,39 +251,57 @@
   }
 
   .status-badge {
-    padding: 3px 10px;
+    padding: 3px 8px;
     border-radius: 4px;
     font-weight: 600;
-    font-size: 0.78rem;
-    font-family: 'Fira Code', Consolas, monospace;
+    font-size: 0.74rem;
+    font-family: 'JetBrains Mono', Consolas, monospace;
   }
 
-  .reason-success { background: #0284c722; color: #38bdf8; border: 1px solid #0284c7; }
-  .reason-timeout { background: #f59e0b22; color: #fbbf24; border: 1px solid #f59e0b; }
-  .reason-killed { background: #ef444422; color: #f87171; border: 1px solid #ef4444; }
-  .reason-output-limit { background: #d946ef22; color: #f472b6; border: 1px solid #d946ef; }
-  .reason-error { background: #ef444422; color: #f87171; border: 1px solid #ef4444; }
+  .reason-success { background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb55; }
+  .reason-timeout { background: #d2992222; color: #e3b341; border: 1px solid #d2992255; }
+  .reason-killed { background: #f8514922; color: #ff7b72; border: 1px solid #f8514955; }
+  .reason-output-limit { background: #bc8cff22; color: #d2a8ff; border: 1px solid #bc8cff55; }
+  .reason-error { background: #f8514922; color: #ff7b72; border: 1px solid #f8514955; }
 
-  /* E2E Selector preservation */
+  /* Test selector: .status-bar and .state-ready */
   .status-bar {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
     font-size: 0.8rem;
-    color: #a1a1aa;
+    color: #8b949e;
   }
 
-  .status-item strong {
-    text-transform: uppercase;
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .runtime-name {
+    color: #8b949e;
+    font-size: 0.78rem;
+  }
+
+  .runtime-val {
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .state-ready { color: #3fb950; }
+  .state-installing, .state-warming { color: #d29922; }
+  .state-not-installed { color: #6e7681; }
+  .state-error { color: #f85149; }
+
+  .dot-green {
+    color: #3fb950;
     font-size: 0.75rem;
+    line-height: 1;
   }
 
-  .state-ready { color: #10b981; }
-  .state-installing, .state-warming { color: #f59e0b; }
-  .state-not-installed { color: #71717a; }
-  .state-error { color: #ef4444; }
-
-  .phase-running { color: #38bdf8; }
-  .phase-compiling { color: #f59e0b; }
-  .phase-idle { color: #71717a; }
+  .sandbox-name {
+    color: #8b949e;
+    font-size: 0.78rem;
+  }
 </style>

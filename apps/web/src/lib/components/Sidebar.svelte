@@ -51,14 +51,26 @@
     window.addEventListener('pointerup', onPointerUp);
   }
 
-  function getFileIcon(langId: string) {
-    if (langId === 'javascript') return { ext: 'JS', color: '#f7df1e' };
-    if (langId === 'typescript') return { ext: 'TS', color: '#3178c6' };
-    if (langId === 'python') return { ext: 'PY', color: '#38bdf8' };
-    if (langId === 'ruby') return { ext: 'RB', color: '#f43f5e' };
-    if (langId === 'c') return { ext: 'C', color: '#a8b9cc' };
-    return { ext: '<>', color: '#a1a1aa' };
+  function getBadgeDetails(langId: string) {
+    if (langId === 'javascript') {
+      return { ext: 'JS', color: '#f1e05a', bg: '#2b2612', border: '#5c4e1b' };
+    }
+    if (langId === 'typescript') {
+      return { ext: 'TS', color: '#3178c6', bg: '#102236', border: '#1e4875' };
+    }
+    if (langId === 'python') {
+      return { ext: 'PY', color: '#38bdf8', bg: '#0d2538', border: '#1a4f78' };
+    }
+    if (langId === 'ruby') {
+      return { ext: 'RB', color: '#f43f5e', bg: '#2e101a', border: '#661b31' };
+    }
+    if (langId === 'c') {
+      return { ext: 'C', color: '#a8b9cc', bg: '#1c222b', border: '#354354' };
+    }
+    return { ext: '<>', color: '#8b949e', bg: '#161b22', border: '#30363d' };
   }
+
+  const currentBadge = $derived(getBadgeDetails(selectedLanguageId));
 </script>
 
 {#if isOpen}
@@ -75,7 +87,7 @@
         {:else if activeTab === 'presets'}
           EXEMPLOS & SNIPPETS
         {:else}
-          CONFIGURAÇÕES
+          CONFIGURAÇÕES & SEGURANÇA
         {/if}
       </span>
       <button
@@ -85,76 +97,75 @@
         onclick={onClose}
         aria-label="Ocultar"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m15 18-6-6 6-6"/>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="3" rx="2" />
+          <path d="M9 3v18" />
         </svg>
       </button>
     </div>
 
     <div class="sidebar-content">
       {#if activeTab === 'explorer'}
-        <!-- Files section -->
+        <!-- Prototype Section: WORKSPACE (1 ARQUIVO) -->
         <div class="section-group">
           <div class="section-title">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="m6 9 6 6 6-6"/>
             </svg>
-            <span>WORKSPACE (ARQUIVOS)</span>
+            <span>WORKSPACE (1 ARQUIVO)</span>
           </div>
-          <div class="file-tree">
-            {#each languages as lang}
-              {@const icon = getFileIcon(lang.id)}
-              <button
-                type="button"
-                class="file-item"
-                class:active={lang.id === selectedLanguageId}
-                onclick={() => onSelectLanguage(lang.id)}
-              >
-                <span class="file-badge" style="color: {icon.color}; border-color: {icon.color}44;">
-                  {icon.ext}
-                </span>
-                <span class="file-name">{lang.entryFile}</span>
-                {#if lang.id === selectedLanguageId}
-                  <span class="active-dot" title="Arquivo ativo">●</span>
-                {/if}
-              </button>
-            {/each}
+
+          <div class="active-file-card">
+            <span
+              class="file-badge"
+              style="color: {currentBadge.color}; background: {currentBadge.bg}; border-color: {currentBadge.border};"
+            >
+              {currentBadge.ext}
+            </span>
+            <span class="file-name">{currentProfile.entryFile}</span>
+            <span class="file-dot" title="Arquivo ativo no editor">●</span>
+          </div>
+
+          <!-- Prototype Description Card -->
+          <div class="workspace-info-card">
+            <div class="card-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+              </svg>
+              <strong>Workspace de arquivo único</strong>
+            </div>
+            <p class="card-desc">
+              Um arquivo {currentProfile.label}, pronto para testar uma ideia sem configuração.
+            </p>
           </div>
         </div>
 
-        <!-- Language Selector Section (Preserves #select-language for tests) -->
+        <!-- Language Selector Section (Preserves #select-language for tests and language switching) -->
         <div class="section-group">
           <div class="section-title">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="m6 9 6 6 6-6"/>
             </svg>
-            <span>LINGUAGEM ATIVA</span>
+            <span>LINGUAGEM DO WORKSPACE</span>
           </div>
           <div class="lang-selector-container">
-            <label class="lang-label" for="select-language">
-              <span>Seletor:</span>
-              <select
-                id="select-language"
-                class="lang-select"
-                value={selectedLanguageId}
-                onchange={(e) => onSelectLanguage((e.currentTarget as HTMLSelectElement).value)}
-              >
-                {#each languages as lang}
-                  <option value={lang.id}>{lang.label}</option>
-                {/each}
-              </select>
-            </label>
-            <div class="runtime-status-pill">
-              <span class="state-dot state-{runtimeState}"></span>
-              <span class="runtime-text">{currentProfile.runtimeLabel}: {runtimeState}</span>
-            </div>
+            <select
+              id="select-language"
+              class="lang-select"
+              value={selectedLanguageId}
+              onchange={(e) => onSelectLanguage((e.currentTarget as HTMLSelectElement).value)}
+            >
+              {#each languages as lang}
+                <option value={lang.id}>{lang.label} ({lang.entryFile})</option>
+              {/each}
+            </select>
           </div>
         </div>
 
-        <!-- Quick Presets Section in Explorer (Preserves .preset-btn for tests) -->
+        <!-- Quick Presets Section in Explorer (Preserves .preset-btn for tests and fast loading) -->
         <div class="section-group">
           <div class="section-title">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="m6 9 6 6 6-6"/>
             </svg>
             <span>EXEMPLOS RÁPIDOS</span>
@@ -197,31 +208,35 @@
       {:else if activeTab === 'settings'}
         <div class="section-group">
           <div class="section-title">
-            <span>CONFIGURAÇÕES DE EXECUÇÃO</span>
+            <span>ISOLAMENTO & SEGURANÇA</span>
           </div>
           <div class="settings-box">
             <div class="setting-item">
-              <span class="setting-key">Watchdog Timeout:</span>
-              <span class="setting-val">3.000 ms</span>
+              <span class="setting-key">Sandbox Isolado:</span>
+              <span class="setting-val text-green">Web Worker</span>
+            </div>
+            <div class="setting-item">
+              <span class="setting-key">Origem:</span>
+              <span class="setting-val text-green">Separada (:8081)</span>
+            </div>
+            <div class="setting-item">
+              <span class="setting-key">Timeout de Execução:</span>
+              <span class="setting-val">3 s</span>
             </div>
             <div class="setting-item">
               <span class="setting-key">Quota de Output:</span>
-              <span class="setting-val">256 KB (Flush 16ms)</span>
+              <span class="setting-val">256 KB</span>
             </div>
             <div class="setting-item">
-              <span class="setting-key">Isolamento:</span>
-              <span class="setting-val text-green">Web Worker + Wasm</span>
-            </div>
-            <div class="setting-item">
-              <span class="setting-key">Same-Origin Policy:</span>
-              <span class="setting-val text-green">Origens Estritas (:8081)</span>
+              <span class="setting-key">DOM / localStorage:</span>
+              <span class="setting-val text-green">Indisponíveis</span>
             </div>
           </div>
         </div>
       {/if}
     </div>
 
-    <!-- Flexible Resize Handle -->
+    <!-- Draggable resizer -->
     <div
       class="resizer"
       role="separator"
@@ -234,8 +249,8 @@
 
 <style>
   .sidebar {
-    background: #18181b;
-    border-right: 1px solid #27272a;
+    background: #0f1217;
+    border-right: 1px solid #1c2128;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -255,21 +270,21 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid #27272a;
-    background: #18181b;
+    border-bottom: 1px solid #1c2128;
+    background: #0f1217;
   }
 
   .sidebar-title {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.08em;
-    color: #a1a1aa;
+    color: #8b949e;
   }
 
   .icon-btn {
     background: transparent;
     border: none;
-    color: #71717a;
+    color: #6e7681;
     cursor: pointer;
     padding: 4px;
     border-radius: 4px;
@@ -280,138 +295,116 @@
   }
 
   .icon-btn:hover {
-    color: #e4e4e7;
-    background: #27272a;
+    color: #e6edf3;
+    background: #1c2128;
   }
 
   .sidebar-content {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 0;
+    padding: 10px 0;
   }
 
   .section-group {
-    margin-bottom: 16px;
+    margin-bottom: 18px;
   }
 
   .section-title {
     padding: 4px 12px;
     font-size: 0.68rem;
     font-weight: 700;
-    color: #71717a;
+    color: #6e7681;
     display: flex;
     align-items: center;
     gap: 6px;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
-  .file-tree {
-    display: flex;
-    flex-direction: column;
-    margin-top: 4px;
-  }
-
-  .file-item {
+  /* Active File Card matching prototype */
+  .active-file-card {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
-    background: transparent;
-    border: none;
-    color: #a1a1aa;
-    font-size: 0.82rem;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.15s;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .file-item:hover {
-    background: #27272a;
-    color: #f4f4f5;
-  }
-
-  .file-item.active {
-    background: #27272a88;
-    color: #38bdf8;
-    font-weight: 500;
-    border-left: 2px solid #38bdf8;
-    padding-left: 12px;
+    gap: 10px;
+    margin: 6px 10px;
+    padding: 7px 12px;
+    background: #181d25;
+    border: 1px solid #282f3c;
+    border-radius: 6px;
+    color: #e6edf3;
+    cursor: default;
   }
 
   .file-badge {
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 1px 4px;
-    border-radius: 3px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 4px;
     border: 1px solid;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    line-height: 1;
   }
 
   .file-name {
     flex: 1;
-    font-family: 'Fira Code', Consolas, monospace;
-    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.82rem;
+    font-weight: 500;
   }
 
-  .active-dot {
-    color: #38bdf8;
-    font-size: 0.7rem;
+  .file-dot {
+    color: #e5a93c;
+    font-size: 0.72rem;
   }
 
-  .lang-selector-container {
-    padding: 6px 12px;
+  /* Description Card matching prototype */
+  .workspace-info-card {
+    margin: 10px 10px;
+    padding: 12px 14px;
+    background: #12151c;
+    border: 1px solid #232832;
+    border-radius: 8px;
   }
 
-  .lang-label {
+  .card-header {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: #a1a1aa;
+    align-items: center;
+    gap: 8px;
+    color: #c9d1d9;
+    font-size: 0.78rem;
+    margin-bottom: 6px;
+  }
+
+  .card-desc {
+    margin: 0;
+    color: #7d8590;
+    font-size: 0.74rem;
+    line-height: 1.45;
+  }
+
+  /* Language Selector */
+  .lang-selector-container {
+    padding: 4px 10px;
   }
 
   .lang-select {
-    background: #27272a;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: #161b22;
+    color: #e6edf3;
+    border: 1px solid #30363d;
     border-radius: 6px;
     padding: 6px 8px;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     outline: none;
     cursor: pointer;
     width: 100%;
     box-sizing: border-box;
+    font-family: inherit;
   }
 
   .lang-select:focus {
-    border-color: #38bdf8;
+    border-color: #e5a93c;
   }
 
-  .runtime-status-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    padding: 4px 8px;
-    background: #27272a55;
-    border-radius: 4px;
-    font-size: 0.72rem;
-    color: #a1a1aa;
-  }
-
-  .state-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-  }
-
-  .state-ready { background: #10b981; }
-  .state-installing, .state-warming { background: #f59e0b; }
-  .state-not-installed { background: #71717a; }
-  .state-error { background: #ef4444; }
-
+  /* Presets List */
   .presets-list {
     display: flex;
     flex-direction: column;
@@ -423,12 +416,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #27272a;
-    border: 1px solid #3f3f46;
+    background: #161b22;
+    border: 1px solid #2d333b;
     border-radius: 6px;
     padding: 6px 10px;
-    color: #d4d4d8;
-    font-size: 0.78rem;
+    color: #c9d1d9;
+    font-size: 0.76rem;
     cursor: pointer;
     text-align: left;
     transition: all 0.15s;
@@ -437,14 +430,14 @@
   }
 
   .preset-btn:hover {
-    background: #3f3f46;
+    background: #21262d;
     color: #ffffff;
-    border-color: #52525b;
+    border-color: #444c56;
   }
 
   .preset-icon {
-    font-size: 0.8rem;
-    color: #eab308;
+    font-size: 0.75rem;
+    color: #e5a93c;
   }
 
   .preset-name {
@@ -464,7 +457,7 @@
     margin: 0;
     font-family: monospace;
     font-size: 0.7rem;
-    color: #a1a1aa;
+    color: #8b949e;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -472,7 +465,7 @@
   }
 
   .settings-box {
-    padding: 8px 12px;
+    padding: 4px 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -483,14 +476,14 @@
     justify-content: space-between;
     font-size: 0.75rem;
     padding: 6px 0;
-    border-bottom: 1px solid #27272a;
+    border-bottom: 1px solid #1c2128;
   }
 
-  .setting-key { color: #a1a1aa; }
-  .setting-val { color: #f4f4f5; font-family: monospace; }
-  .text-green { color: #10b981; }
+  .setting-key { color: #8b949e; }
+  .setting-val { color: #e6edf3; font-family: monospace; font-size: 0.72rem; }
+  .text-green { color: #3fb950; }
 
-  /* Drag-to-Resize Handle */
+  /* Resizer */
   .resizer {
     position: absolute;
     right: 0;
@@ -505,6 +498,6 @@
 
   .resizer:hover,
   .sidebar.resizing .resizer {
-    background: #38bdf8;
+    background: #e5a93c;
   }
 </style>

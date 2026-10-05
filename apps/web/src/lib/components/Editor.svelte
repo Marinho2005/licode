@@ -1,7 +1,7 @@
 <script lang="ts">
   let {
     code = $bindable(),
-    entryFile = 'index.js',
+    entryFile = 'main.js',
     languageLabel = 'JavaScript',
     isRunDisabled,
     isStopDisabled,
@@ -20,9 +20,21 @@
   let textareaRef: HTMLTextAreaElement | null = $state(null);
   let gutterRef: HTMLDivElement | null = $state(null);
 
+  let cursorLine = $state(1);
+  let cursorCol = $state(1);
+
   // Calcula contagem de linhas
   const lineCount = $derived(Math.max(code.split('\n').length, 1));
   const linesArray = $derived(Array.from({ length: lineCount }, (_, i) => i + 1));
+
+  function updateCursor() {
+    if (!textareaRef) return;
+    const pos = textareaRef.selectionStart || 0;
+    const beforeCursor = code.substring(0, pos);
+    const lines = beforeCursor.split('\n');
+    cursorLine = lines.length;
+    cursorCol = lines[lines.length - 1].length + 1;
+  }
 
   function handleScroll(e: Event) {
     const target = e.currentTarget as HTMLTextAreaElement;
@@ -52,70 +64,45 @@
 
       code = code.substring(0, start) + spaces + code.substring(end);
 
-      // Restaura posição do cursor após re-render
       setTimeout(() => {
         if (textareaRef) {
           textareaRef.selectionStart = textareaRef.selectionEnd = start + spaces.length;
+          updateCursor();
         }
       }, 0);
+      return;
     }
-  }
 
-  function getLangColor(name: string) {
-    if (name.endsWith('.ts')) return '#3178c6';
-    if (name.endsWith('.js')) return '#f7df1e';
-    if (name.endsWith('.py')) return '#38bdf8';
-    if (name.endsWith('.rb')) return '#f43f5e';
-    if (name.endsWith('.c')) return '#a8b9cc';
-    return '#a1a1aa';
+    setTimeout(updateCursor, 0);
   }
 </script>
 
 <section class="panel editor-panel">
-  <!-- Tabs Bar (VS Code Style) -->
+  <!-- Tabs Bar matching prototype -->
   <div class="tabs-bar">
     <div class="tab active-tab">
-      <span class="tab-indicator" style="background: {getLangColor(entryFile)};"></span>
+      <svg class="tab-code-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/>
+        <path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
+      </svg>
       <span class="entry-file-label">{entryFile}</span>
-      <span class="tab-close-icon">×</span>
     </div>
 
-    <!-- Actions in tab bar -->
-    <div class="tab-actions">
-      <button
-        type="button"
-        class="tab-btn-action btn-run"
-        disabled={isRunDisabled}
-        onclick={onRun}
-        title="Executar (Ctrl+Enter)"
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-          <polygon points="5 3 19 12 5 21 5 3" />
-        </svg>
-        <span>Run</span>
-      </button>
-
-      <button
-        type="button"
-        class="tab-btn-action btn-stop"
-        disabled={isStopDisabled}
-        onclick={onStop}
-        title="Parar execução"
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="4" y="4" width="16" height="16" rx="2" />
-        </svg>
-        <span>Stop</span>
-      </button>
+    <!-- Breadcrumb on right side of tab bar -->
+    <div class="breadcrumb-container">
+      <span class="breadcrumb-text">workspace &gt; {entryFile}</span>
     </div>
   </div>
 
-  <!-- Breadcrumbs Bar (Replit style) -->
-  <div class="breadcrumb-bar">
-    <span class="breadcrumb-root">workspace</span>
-    <span class="breadcrumb-sep">&gt;</span>
-    <span class="breadcrumb-file">{entryFile}</span>
-    <span class="lang-tag">{languageLabel}</span>
+  <!-- Subheader Bar (Language pill, encoding, mode notice) -->
+  <div class="sub-header-bar">
+    <div class="sub-header-left">
+      <span class="lang-pill">{languageLabel}</span>
+      <span class="encoding-text">UTF-8</span>
+    </div>
+    <div class="sub-header-right">
+      <span class="mode-notice">Somente {languageLabel}</span>
+    </div>
   </div>
 
   <!-- Editor Container with Gutter & Textarea -->
@@ -132,11 +119,27 @@
       bind:value={code}
       onscroll={handleScroll}
       onkeydown={handleKeydown}
+      onclick={updateCursor}
+      onkeyup={updateCursor}
       placeholder="Digite ou cole seu código {languageLabel} aqui..."
       spellcheck="false"
       autocomplete="off"
       autocapitalize="off"
     ></textarea>
+  </div>
+
+  <!-- Editor Footer Status matching prototype: {} main.js ... Ln 1, Col 19 -->
+  <div class="editor-status-bar">
+    <div class="editor-status-left">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/>
+        <path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
+      </svg>
+      <span>{entryFile}</span>
+    </div>
+    <div class="editor-status-right">
+      <span>Ln {cursorLine}, Col {cursorCol}</span>
+    </div>
   </div>
 </section>
 
@@ -146,25 +149,25 @@
     flex-direction: column;
     overflow: hidden;
     height: 100%;
-    background: #18181b;
+    background: #0d0f12;
   }
 
   .editor-panel {
-    border-right: 1px solid #27272a;
+    border-right: 1px solid #1c2128;
     position: relative;
   }
 
-  /* Tabs Bar */
+  /* Tabs Bar matching prototype */
   .tabs-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 36px;
-    background: #121214;
-    border-bottom: 1px solid #27272a;
-    padding-left: 0;
+    height: 38px;
+    background: #0d0f12;
+    border-bottom: 1px solid #1c2128;
     user-select: none;
     box-sizing: border-box;
+    padding-right: 14px;
   }
 
   .tab {
@@ -172,108 +175,78 @@
     align-items: center;
     gap: 8px;
     height: 100%;
-    padding: 0 14px;
+    padding: 0 16px;
     font-size: 0.8rem;
-    font-family: 'Fira Code', Consolas, monospace;
-    color: #a1a1aa;
-    background: #18181b;
-    border-right: 1px solid #27272a;
-    border-top: 2px solid transparent;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    color: #8b949e;
+    background: #0d0f12;
+    border-right: 1px solid #1c2128;
     cursor: default;
+    position: relative;
   }
 
   .active-tab {
-    color: #f4f4f5;
-    background: #18181b;
-    border-top-color: #38bdf8;
+    color: #e6edf3;
     font-weight: 500;
+    border-top: 2px solid #e5a93c;
   }
 
-  .tab-indicator {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
+  .tab-code-icon {
+    color: #e5a93c;
   }
 
   .entry-file-label {
     letter-spacing: -0.01em;
   }
 
-  .tab-close-icon {
-    font-size: 1rem;
-    color: #71717a;
-    margin-left: 4px;
+  .breadcrumb-container {
+    font-size: 0.74rem;
+    color: #6e7681;
+    font-family: 'JetBrains Mono', Consolas, monospace;
   }
 
-  .tab-actions {
+  /* Subheader bar matching prototype */
+  .sub-header-bar {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding-right: 10px;
-  }
-
-  .tab-btn-action {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    border: none;
-    border-radius: 4px;
-    padding: 3px 10px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .tab-btn-action:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
-
-  .btn-run {
-    background: #10b98122;
-    color: #34d399;
-    border: 1px solid #10b98144;
-  }
-  .btn-run:hover:not(:disabled) {
-    background: #10b98144;
-    color: #ffffff;
-  }
-
-  .btn-stop {
-    background: #ef444422;
-    color: #f87171;
-    border: 1px solid #ef444444;
-  }
-  .btn-stop:hover:not(:disabled) {
-    background: #ef444444;
-    color: #ffffff;
-  }
-
-  /* Breadcrumbs */
-  .breadcrumb-bar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 24px;
-    padding: 0 12px;
-    background: #18181b;
-    border-bottom: 1px solid #27272a;
-    font-size: 0.72rem;
-    color: #71717a;
+    justify-content: space-between;
+    height: 32px;
+    padding: 0 14px;
+    background: #0d0f12;
+    border-bottom: 1px solid #1c2128;
+    font-size: 0.74rem;
     user-select: none;
   }
 
-  .breadcrumb-root { color: #a1a1aa; }
-  .breadcrumb-sep { font-size: 0.65rem; color: #52525b; }
-  .breadcrumb-file { color: #e4e4e7; font-family: monospace; }
-  .lang-tag {
-    margin-left: auto;
-    font-size: 0.65rem;
-    background: #27272a;
-    padding: 1px 6px;
+  .sub-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lang-pill {
+    background: #161b22;
+    border: 1px solid #282f3a;
+    color: #c9d1d9;
+    padding: 2px 8px;
     border-radius: 4px;
-    color: #a1a1aa;
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+
+  .encoding-text {
+    color: #6e7681;
+    font-size: 0.72rem;
+  }
+
+  .sub-header-right {
+    display: flex;
+    align-items: center;
+  }
+
+  .mode-notice {
+    color: #6e7681;
+    font-size: 0.72rem;
   }
 
   /* Editor Main Area */
@@ -282,13 +255,13 @@
     display: flex;
     overflow: hidden;
     position: relative;
-    background: #18181b;
+    background: #0d0f12;
   }
 
   .line-numbers-gutter {
     width: 44px;
-    background: #18181b;
-    border-right: 1px solid #27272a55;
+    background: #0d0f12;
+    border-right: 1px solid rgba(28, 33, 40, 0.4);
     padding: 12px 0;
     user-select: none;
     overflow: hidden;
@@ -297,22 +270,22 @@
   }
 
   .line-num {
-    padding-right: 10px;
-    font-family: 'Fira Code', Consolas, Monaco, monospace;
+    padding-right: 12px;
+    font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
     font-size: 0.88rem;
-    line-height: 1.55rem;
-    color: #52525b;
+    line-height: 1.6rem;
+    color: #484f58;
   }
 
   .code-textarea {
     flex: 1;
-    background: #18181b;
-    color: #f4f4f5;
+    background: #0d0f12;
+    color: #e6edf3;
     border: none;
     padding: 12px 14px;
-    font-family: 'Fira Code', Consolas, Monaco, monospace;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
     font-size: 0.88rem;
-    line-height: 1.55rem;
+    line-height: 1.6rem;
     resize: none;
     outline: none;
     white-space: pre;
@@ -323,6 +296,31 @@
   }
 
   .code-textarea::placeholder {
-    color: #52525b;
+    color: #30363d;
+  }
+
+  /* Bottom status inside editor pane */
+  .editor-status-bar {
+    height: 24px;
+    background: #0d0f12;
+    border-top: 1px solid #1c2128;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    font-size: 0.72rem;
+    color: #6e7681;
+    user-select: none;
+  }
+
+  .editor-status-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+  }
+
+  .editor-status-right {
+    font-family: 'JetBrains Mono', Consolas, monospace;
   }
 </style>

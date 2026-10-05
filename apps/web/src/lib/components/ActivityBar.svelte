@@ -2,85 +2,86 @@
   let {
     activeTab,
     isSidebarOpen,
-    onTabClick
+    onTabClick,
+    onOpenHelp
   }: {
     activeTab: 'explorer' | 'presets' | 'settings';
     isSidebarOpen: boolean;
     onTabClick: (tab: 'explorer' | 'presets' | 'settings') => void;
+    onOpenHelp?: () => void;
   } = $props();
 </script>
 
 <aside class="activity-bar">
   <div class="top-group">
-    <!-- Explorer Icon -->
+    <!-- Explorer Icon (Folder) -->
     <button
       type="button"
       class="activity-btn"
       class:active={isSidebarOpen && activeTab === 'explorer'}
-      title="Explorador de Arquivos (Ctrl+Shift+E)"
+      title="Explorador de Arquivos (Ctrl+B)"
       onclick={() => onTabClick('explorer')}
       aria-label="Explorador"
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
       </svg>
     </button>
 
-    <!-- Presets / Quick Examples Icon -->
+    <!-- Code Presets Icon ({ }) -->
     <button
       type="button"
       class="activity-btn"
       class:active={isSidebarOpen && activeTab === 'presets'}
-      title="Exemplos Rápidos e Snippets"
+      title="Exemplos e Snippets"
       onclick={() => onTabClick('presets')}
-      aria-label="Exemplos Rápidos"
+      aria-label="Exemplos"
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m16 18 6-6-6-6"/>
-        <path d="m8 6-6 6 6 6"/>
-        <path d="m14 4-4 16"/>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/>
+        <path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
       </svg>
     </button>
 
-    <!-- Settings / Runtime Config Icon -->
+    <!-- Security & Sandbox Icon (Shield with Check) -->
     <button
       type="button"
       class="activity-btn"
       class:active={isSidebarOpen && activeTab === 'settings'}
-      title="Configurações de Execução"
+      title="Segurança & Isolamento da Sandbox"
       onclick={() => onTabClick('settings')}
-      aria-label="Configurações"
+      aria-label="Segurança"
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-        <circle cx="12" cy="12" r="3"/>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="m9 12 2 2 4-4"/>
       </svg>
     </button>
   </div>
 
   <div class="bottom-group">
-    <!-- Docs / Github link -->
-    <a
-      href="https://github.com/Marinho2005/licode"
-      target="_blank"
-      rel="noopener noreferrer"
+    <!-- Help / Information Icon (?) -->
+    <button
+      type="button"
       class="activity-btn"
-      title="Código-fonte no GitHub"
-      aria-label="GitHub"
+      title="Ajuda e Atalhos"
+      onclick={() => onOpenHelp?.()}
+      aria-label="Ajuda"
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/>
-        <path d="M9 18c-4.51 2-5-2-7-2"/>
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
-    </a>
+    </button>
   </div>
 </aside>
 
 <style>
   .activity-bar {
     width: 48px;
-    background: #18181b;
-    border-right: 1px solid #27272a;
+    background: #0c0e12;
+    border-right: 1px solid #1c2128;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -96,35 +97,34 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     width: 100%;
   }
 
   .activity-btn {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 8px;
     border: none;
     background: transparent;
-    color: #71717a;
+    color: #6e7681;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.15s ease;
     position: relative;
-    text-decoration: none;
     box-sizing: border-box;
   }
 
   .activity-btn:hover {
-    color: #e4e4e7;
-    background: #27272a;
+    color: #e6edf3;
+    background: #161b22;
   }
 
   .activity-btn.active {
-    color: #38bdf8;
-    background: #27272a;
+    color: #e5a93c;
+    background: #161b22;
   }
 
   .activity-btn.active::before {
@@ -133,8 +133,8 @@
     left: 0;
     top: 8px;
     bottom: 8px;
-    width: 3px;
-    background: #38bdf8;
-    border-radius: 0 4px 4px 0;
+    width: 2px;
+    background: #e5a93c;
+    border-radius: 0 2px 2px 0;
   }
 </style>

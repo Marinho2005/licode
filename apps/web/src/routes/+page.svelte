@@ -63,6 +63,8 @@
   let sidebarWidth = $state(260);
   let editorSplitPercentage = $state(52); // Editor 52%, Terminal 48%
   let isWorkspaceResizing = $state(false);
+  let runCount = $state(0);
+  let isHelpModalOpen = $state(false);
 
   function clearOutput() {
     if (terminalRef) {
@@ -224,6 +226,7 @@
     clearOutput();
     exitStatus = null;
     execPhase = 'compiling';
+    runCount += 1;
     appendLog('system', `--- Iniciando sessão de execução (${currentProfile.label}) ---`);
 
     try {
@@ -293,6 +296,7 @@
       activeTab={activeActivityTab}
       {isSidebarOpen}
       onTabClick={handleActivityTabClick}
+      onOpenHelp={() => (isHelpModalOpen = true)}
     />
 
     <!-- Flexible Resizable Sidebar -->
@@ -333,12 +337,18 @@
       ></div>
 
       <div class="terminal-pane" style="width: {100 - editorSplitPercentage}%;">
-        <Terminal bind:this={terminalRef} onClear={clearOutput} />
+        <Terminal
+          bind:this={terminalRef}
+          languageLabel={currentProfile.label}
+          {execPhase}
+          {runCount}
+          onClear={clearOutput}
+        />
       </div>
     </main>
   </div>
 
-  <!-- Bottom Status Bar (VS Code style) -->
+  <!-- Bottom Status Bar -->
   <StatusBar
     languageLabel={currentProfile.label}
     {runtimeState}
@@ -347,6 +357,58 @@
     {isSidebarOpen}
     onToggleSidebar={toggleSidebar}
   />
+
+  <!-- Help / Shortcuts Modal Dialog -->
+  {#if isHelpModalOpen}
+    <div
+      class="modal-backdrop"
+      onclick={() => (isHelpModalOpen = false)}
+      onkeydown={(e) => e.key === 'Escape' && (isHelpModalOpen = false)}
+      tabindex="0"
+      role="button"
+      aria-label="Fechar modal de ajuda"
+    >
+      <div
+        class="modal-card"
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => e.stopPropagation()}
+        tabindex="-1"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="modal-header">
+          <h3>LiCode.dev · Ajuda e Atalhos</h3>
+          <button
+            type="button"
+            class="modal-close-btn"
+            onclick={() => (isHelpModalOpen = false)}
+            aria-label="Fechar"
+          >×</button>
+        </div>
+        <div class="modal-body">
+          <div class="shortcut-list">
+            <div class="shortcut-row">
+              <span class="shortcut-action">Executar código</span>
+              <kbd class="shortcut-key">⌘↵ / Ctrl+Enter</kbd>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-action">Alternar barra lateral</span>
+              <kbd class="shortcut-key">Ctrl+B</kbd>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-action">Indentar código (2 espaços)</span>
+              <kbd class="shortcut-key">Tab</kbd>
+            </div>
+          </div>
+          <div class="help-info-box">
+            <p>
+              <strong>Isolamento Seguro:</strong> O código é executado em um Web Worker isolado em domínio próprio com política Same-Origin estrita. Não há acesso a <code>window</code>, <code>document</code> ou <code>localStorage</code>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- Sandbox Iframe (Hidden / Isolated) -->
   {#if runtimeState !== 'error'}
@@ -365,8 +427,8 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    background: #09090b;
-    color: #e4e4e7;
+    background: #0d0f12;
+    color: #e6edf3;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     user-select: none;
     overflow: hidden;
@@ -378,7 +440,7 @@
     height: 100vh;
     width: 100vw;
     overflow: hidden;
-    background: #09090b;
+    background: #0d0f12;
   }
 
   .workspace-body {
@@ -386,6 +448,7 @@
     flex: 1;
     overflow: hidden;
     position: relative;
+    background: #0d0f12;
   }
 
   .main-workspace {
@@ -393,7 +456,7 @@
     flex: 1;
     overflow: hidden;
     position: relative;
-    background: #18181b;
+    background: #0d0f12;
   }
 
   .main-workspace.workspace-resizing {
@@ -417,18 +480,28 @@
 
   /* Draggable Splitter */
   .workspace-splitter {
-    width: 4px;
+    width: 1px;
     height: 100%;
-    background: #27272a;
+    background: #1c2128;
     cursor: col-resize;
     flex-shrink: 0;
+    position: relative;
     transition: background 0.15s;
     z-index: 5;
   }
 
+  .workspace-splitter::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -3px;
+    right: -3px;
+  }
+
   .workspace-splitter:hover,
   .main-workspace.workspace-resizing .workspace-splitter {
-    background: #38bdf8;
+    background: #e5a93c;
   }
 
   .sandbox-iframe {
@@ -437,5 +510,117 @@
     height: 0;
     border: none;
     visibility: hidden;
+  }
+
+  /* Help Modal */
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+  }
+
+  .modal-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    width: 440px;
+    max-width: 90vw;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .modal-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #e6edf3;
+    font-weight: 600;
+  }
+
+  .modal-close-btn {
+    background: transparent;
+    border: none;
+    color: #8b949e;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .modal-close-btn:hover {
+    color: #f0f6fc;
+    background: #21262d;
+  }
+
+  .modal-body {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .shortcut-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+  }
+
+  .shortcut-action {
+    color: #c9d1d9;
+  }
+
+  .shortcut-key {
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: #e5a93c;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.76rem;
+  }
+
+  .help-info-box {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.76rem;
+    color: #8b949e;
+    line-height: 1.45;
+  }
+
+  .help-info-box strong {
+    color: #e6edf3;
+  }
+
+  .help-info-box code {
+    background: #161b22;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #e5a93c;
+    font-family: monospace;
   }
 </style>
